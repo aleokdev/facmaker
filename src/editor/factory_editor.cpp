@@ -24,7 +24,7 @@ constexpr std::string_view starting_program = R"({
                 "Iron Ore": 1
             },
             "outputs": {
-                "Crushed Iron Ore": 1
+                "Crushed Iron Ore": 2
             },
             "time": 200
         },
@@ -52,6 +52,9 @@ FactoryEditor::FactoryEditor() {
     program_editor.SetText(std::string(starting_program.data()));
     program_editor.SetShowWhitespaces(false);
     parse_program();
+
+    imnodes::EditorContextSet(imnodes_ctx);
+    imnodes::EditorContextResetPanning(ImVec2{50, 50});
 }
 
 void FactoryEditor::draw() {
@@ -60,7 +63,6 @@ void FactoryEditor::draw() {
 }
 
 void FactoryEditor::update_processing_graph() {
-
     ImGui::SetNextWindowSize(ImVec2{500, 500}, ImGuiCond_Appearing);
     ImGui::Begin("Factory Displayer");
 
@@ -68,12 +70,31 @@ void FactoryEditor::update_processing_graph() {
         imnodes::PushColorStyle(imnodes::ColorStyle_GridBackground, 0x2e2e2eff);
     }
     imnodes::BeginNodeEditor();
-    imnodes::EditorContextResetPanning(ImVec2{50, 50});
 
     std::unordered_map<Item::NameT, std::vector<int>> item_inputs;
     std::unordered_map<Item::NameT, std::vector<int>> item_outputs;
 
     int next_uid = 1;
+    for (auto input : factory.inputs) {
+        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar, 0xff + ((next_uid * 50) % 0xFF << 8) |
+                                                                  ((next_uid * 186) % 0xFF << 16) |
+                                                                  ((next_uid * 67) % 0xFF << 24));
+        imnodes::BeginNode(next_uid++);
+        imnodes::SetNodeGridSpacePos(next_uid - 1,
+                                     ImVec2{0, static_cast<float>(next_uid - 1) * 50.f});
+
+        imnodes::BeginNodeTitleBar();
+        ImGui::TextUnformatted("Input");
+        imnodes::EndNodeTitleBar();
+
+        item_outputs[input].emplace_back(next_uid);
+        imnodes::BeginOutputAttribute(next_uid++);
+        ImGui::Text("%s", input.c_str());
+        imnodes::EndOutputAttribute();
+
+        imnodes::EndNode();
+    }
+
     for (auto machine : factory.machines) {
         imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar, 0xff + ((next_uid * 50) % 0xFF << 8) |
                                                                   ((next_uid * 186) % 0xFF << 16) |
@@ -106,6 +127,26 @@ void FactoryEditor::update_processing_graph() {
         imnodes::EndNode();
 
         imnodes::PopColorStyle();
+    }
+
+    for (auto output : factory.outputs) {
+        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar, 0xff + ((next_uid * 50) % 0xFF << 8) |
+                                                                  ((next_uid * 186) % 0xFF << 16) |
+                                                                  ((next_uid * 67) % 0xFF << 24));
+        imnodes::BeginNode(next_uid++);
+        imnodes::SetNodeGridSpacePos(next_uid - 1,
+                                     ImVec2{0, static_cast<float>(next_uid - 1) * 50.f});
+
+        imnodes::BeginNodeTitleBar();
+        ImGui::TextUnformatted("Output");
+        imnodes::EndNodeTitleBar();
+
+        item_inputs[output].emplace_back(next_uid);
+        imnodes::BeginInputAttribute(next_uid++);
+        ImGui::Text("%s", output.c_str());
+        imnodes::EndInputAttribute();
+
+        imnodes::EndNode();
     }
 
     for (auto [item, input_ids] : item_inputs) {
@@ -150,6 +191,19 @@ void FactoryEditor::parse_program() {
     } else {
         auto val = parser.release();
         if (auto obj = val.if_object()) {
+            if (auto inputs_val = obj->if_contains("inputs")) {
+                if (auto inputs = inputs_val->if_object()) {
+                    for (const auto [input, _] : *inputs) { parsed_fac.inputs.emplace_back(input); }
+                }
+            }
+            if (auto outputs_val = obj->if_contains("outputs")) {
+                if (auto outputs = outputs_val->if_object()) {
+                    for (const auto [output, _] : *outputs) {
+                        parsed_fac.outputs.emplace_back(output);
+                    }
+                }
+            }
+
             if (auto machines_val = obj->if_contains("machines")) {
                 if (auto machines = machines_val->if_array()) {
                     for (auto machine_val : *machines) {
