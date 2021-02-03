@@ -7,3 +7,6 @@
 [submodule "ext/glad"]
 	path = ext/glad
 	url = https://github.com/alexdevteam/glad
+[submodule "ext/imnodes"]
+	path = ext/imnodes
+	url = https://github.com/Nelarius/imnodes
