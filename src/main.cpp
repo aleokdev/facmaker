@@ -16,10 +16,21 @@ int main() {
         return -1;
     }
 
-    GLFWwindow* window = glfwCreateWindow(640, 480, "facmaker", NULL, NULL);
+    int window_x = 0, window_y = 0;
+#ifndef NDEBUG
+    {
+        int monitor_count;
+        auto monitors = glfwGetMonitors(&monitor_count);
+        if (monitor_count > 0) {
+            glfwGetMonitorPos(monitors[1], &window_x, &window_x);
+        }
+    }
+#endif
+    GLFWwindow* window = glfwCreateWindow(1020, 720, "facmaker", NULL, NULL);
     if (!window) {
         return -1;
     }
+    glfwSetWindowPos(window, window_x, window_y);
 
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc)&glfwGetProcAddress);
@@ -33,6 +44,8 @@ int main() {
     ImGui_ImplOpenGL3_Init(glsl_version);
     imnodes::Initialize();
 
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
     // Setup ImGui style
     ImGui::StyleColorsDark();
 
@@ -44,6 +57,8 @@ int main() {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+
+        ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
 
         ImGui::ShowDemoWindow();
         editor.draw();

@@ -10,3 +10,9 @@
 [submodule "ext/imnodes"]
 	path = ext/imnodes
 	url = https://github.com/Nelarius/imnodes
+[submodule "ext/ImGuiColorTextEdit"]
+	path = ext/ImGuiColorTextEdit
+	url = https://github.com/BalazsJako/ImGuiColorTextEdit
+[submodule "ext/json"]
+	path = ext/json
+	url = https://github.com/boostorg/json

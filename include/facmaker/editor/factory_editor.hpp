@@ -1,3 +1,6 @@
+#pragma once
+
+#include <TextEditor.h>
 #include <imgui.h>
 #include <vector>
 
@@ -17,16 +20,20 @@ public:
 
 private:
     void update_processing_graph();
-    void update_text_editor();
+    void update_program_editor();
+    void parse_program();
 
     struct Cache {
         std::vector<ImVec2> machine_positions;
 
+        /// Whether if what is being drawn (the cache and factory) matches up with the text
+        /// entered (the program).
         mutable bool is_dirty = true;
     } cache;
 
     Factory factory;
     imnodes::EditorContext* imnodes_ctx;
+    TextEditor program_editor;
 };
 
 } // namespace fmk

@@ -1,5 +1,10 @@
 add_subdirectory(glfw)
 add_subdirectory(glad)
+set(BOOST_JSON_BUILD_EXAMPLES OFF)
+set(BOOST_JSON_BUILD_FUZZERS OFF)
+set(BOOST_JSON_BUILD_TESTS OFF)
+set(BOOST_JSON_STANDALONE ON)
+add_subdirectory(json)
 
 add_library(ext INTERFACE)
 
@@ -23,4 +28,12 @@ target_include_directories(imnodes PUBLIC
 )
 target_link_libraries(imnodes PUBLIC imgui)
 
-target_link_libraries(ext INTERFACE glfw imgui GL glad imnodes)
+add_library(imtext STATIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/ImGuiColorTextEdit/TextEditor.cpp"
+)
+target_include_directories(imtext PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/ImGuiColorTextEdit"
+)
+target_link_libraries(imtext PUBLIC imgui)
+
+target_link_libraries(ext INTERFACE glfw imgui GL glad imnodes imtext boost_json)
