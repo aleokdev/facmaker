@@ -16,3 +16,6 @@
 [submodule "ext/json"]
 	path = ext/json
 	url = https://github.com/boostorg/json
+[submodule "ext/implot"]
+	path = ext/implot
+	url = https://github.com/epezent/implot
