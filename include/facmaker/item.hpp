@@ -8,9 +8,8 @@ namespace fmk {
 struct Item {
     using NameT = std::string;
 
-    enum class NodeType { Input, Output, Internal } type;
-
-    std::string name;
+    enum class NodeType { Input, Output, Internal } type = NodeType::Internal;
+    int starting_quantity = 0;
 };
 
 struct ItemStream {
@@ -19,13 +18,3 @@ struct ItemStream {
 };
 
 } // namespace fmk
-
-namespace std {
-
-template<> struct hash<::fmk::Item> {
-    std::size_t operator()(::fmk::Item const& item) const noexcept {
-        return std::hash<std::string>{}(item.name);
-    }
-};
-
-} // namespace std

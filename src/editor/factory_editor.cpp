@@ -47,7 +47,7 @@ constexpr std::string_view starting_program = R"({
 
 namespace fmk {
 
-FactoryEditor::FactoryEditor() {
+FactoryEditor::FactoryEditor() : factory({}, {}) {
     imnodes_ctx = imnodes::EditorContextCreate();
     program_editor.SetText(std::string(starting_program.data()));
     program_editor.SetShowWhitespaces(false);
@@ -71,11 +71,12 @@ void FactoryEditor::update_processing_graph() {
     }
     imnodes::BeginNodeEditor();
 
-    std::unordered_map<Item::NameT, std::vector<int>> item_inputs;
-    std::unordered_map<Item::NameT, std::vector<int>> item_outputs;
+    std::vector<int> factory_input_uids;
+    std::vector<int> factory_output_uids;
+    std::unordered_map<Item::NameT, int> item_uids;
 
     int next_uid = 1;
-    for (auto input : factory.inputs) {
+    for (auto& input : factory.inputs()) {
         imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar, 0xff + ((next_uid * 50) % 0xFF << 8) |
                                                                   ((next_uid * 186) % 0xFF << 16) |
                                                                   ((next_uid * 67) % 0xFF << 24));
@@ -87,15 +88,17 @@ void FactoryEditor::update_processing_graph() {
         ImGui::TextUnformatted("Input");
         imnodes::EndNodeTitleBar();
 
-        item_outputs[input].emplace_back(next_uid);
+        item_uids[std::string(input)] = next_uid;
         imnodes::BeginOutputAttribute(next_uid++);
         ImGui::Text("%s", input.c_str());
         imnodes::EndOutputAttribute();
 
         imnodes::EndNode();
+
+        imnodes::PopColorStyle();
     }
 
-    for (auto machine : factory.machines) {
+    for (auto& machine : factory.machines()) {
         imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar, 0xff + ((next_uid * 50) % 0xFF << 8) |
                                                                   ((next_uid * 186) % 0xFF << 16) |
                                                                   ((next_uid * 67) % 0xFF << 24));
@@ -108,14 +111,14 @@ void FactoryEditor::update_processing_graph() {
         imnodes::EndNodeTitleBar();
 
         for (auto input : machine.inputs) {
-            item_inputs[input.item].emplace_back(next_uid);
+            factory_input_uids.emplace_back(next_uid);
             imnodes::BeginInputAttribute(next_uid++);
             ImGui::Text("%i %s", input.quantity, input.item.c_str());
             imnodes::EndInputAttribute();
         }
 
         for (auto output : machine.outputs) {
-            item_outputs[output.item].emplace_back(next_uid);
+            factory_output_uids.emplace_back(next_uid);
             imnodes::BeginOutputAttribute(next_uid++);
             ImGui::Indent(40);
             ImGui::Text("%i %s", output.quantity, output.item.c_str());
@@ -129,7 +132,9 @@ void FactoryEditor::update_processing_graph() {
         imnodes::PopColorStyle();
     }
 
-    for (auto output : factory.outputs) {
+    int first_output_uid = next_uid + 1;
+
+    for (auto& output : factory.outputs()) {
         imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar, 0xff + ((next_uid * 50) % 0xFF << 8) |
                                                                   ((next_uid * 186) % 0xFF << 16) |
                                                                   ((next_uid * 67) % 0xFF << 24));
@@ -141,17 +146,31 @@ void FactoryEditor::update_processing_graph() {
         ImGui::TextUnformatted("Output");
         imnodes::EndNodeTitleBar();
 
-        item_inputs[output].emplace_back(next_uid);
+        item_uids[std::string(output)] = next_uid;
         imnodes::BeginInputAttribute(next_uid++);
         ImGui::Text("%s", output.c_str());
         imnodes::EndInputAttribute();
 
         imnodes::EndNode();
+
+        imnodes::PopColorStyle();
     }
 
-    for (auto [item, input_ids] : item_inputs) {
-        for (auto input : input_ids) {
-            for (auto output : item_outputs[item]) { imnodes::Link(next_uid++, input, output); }
+    for (auto& [item_name, node] : factory.item_nodes()) {
+        for (auto& input : node.inputs) {
+            for (auto& output : node.outputs) {
+                imnodes::Link(next_uid++, factory_input_uids[input], factory_output_uids[output]);
+            }
+        }
+
+        if (factory.items().at(item_name).type == Item::NodeType::Input) {
+            for (auto& input : node.inputs) {
+                imnodes::Link(next_uid++, factory_input_uids[input], item_uids[item_name]);
+            }
+        } else if (factory.items().at(item_name).type == Item::NodeType::Output) {
+            for (auto& output : node.outputs) {
+                imnodes::Link(next_uid++, item_uids[item_name], factory_output_uids[output]);
+            }
         }
     }
 
@@ -173,8 +192,9 @@ void FactoryEditor::update_program_editor() {
 }
 
 void FactoryEditor::parse_program() {
-    Factory parsed_fac;
     TextEditor::ErrorMarkers errors;
+    Factory::MachinesT parsed_machines;
+    Factory::ItemsT parsed_items;
     cache.is_dirty = true;
 
     json::error_code parse_error;
@@ -193,13 +213,15 @@ void FactoryEditor::parse_program() {
         if (auto obj = val.if_object()) {
             if (auto inputs_val = obj->if_contains("inputs")) {
                 if (auto inputs = inputs_val->if_object()) {
-                    for (const auto [input, _] : *inputs) { parsed_fac.inputs.emplace_back(input); }
+                    for (const auto [input, _] : *inputs) {
+                        parsed_items[std::string(input)].type = Item::NodeType::Input;
+                    }
                 }
             }
             if (auto outputs_val = obj->if_contains("outputs")) {
                 if (auto outputs = outputs_val->if_object()) {
                     for (const auto [output, _] : *outputs) {
-                        parsed_fac.outputs.emplace_back(output);
+                        parsed_items[std::string(output)].type = Item::NodeType::Output;
                     }
                 }
             }
@@ -234,6 +256,7 @@ void FactoryEditor::parse_program() {
                                 if (auto inputs = inputs_val->if_object()) {
                                     for (const auto [input_item, input_qty] : *inputs) {
                                         if (auto quantity = input_qty.if_int64()) {
+                                            parsed_items.insert({std::string(input_item), Item()});
                                             result.inputs.emplace_back(
                                                 ItemStream{std::string(input_item.data()),
                                                            static_cast<int>(*quantity)});
@@ -252,6 +275,7 @@ void FactoryEditor::parse_program() {
                                 if (auto outputs = outputs_val->if_object()) {
                                     for (const auto [output_item, output_qty] : *outputs) {
                                         if (auto quantity = output_qty.if_int64()) {
+                                            parsed_items.insert({std::string(output_item), Item()});
                                             result.outputs.emplace_back(
                                                 ItemStream{std::string(output_item.data()),
                                                            static_cast<int>(*quantity)});
@@ -267,7 +291,7 @@ void FactoryEditor::parse_program() {
                                 errors.insert({1, "Machines must have an \"outputs\" value"});
                             }
 
-                            parsed_fac.machines.emplace_back(result);
+                            parsed_machines.emplace_back(result);
                         } else {
                             errors.insert({1, "Machines must be JSON objects"});
                         }
@@ -284,7 +308,7 @@ void FactoryEditor::parse_program() {
     program_editor.SetErrorMarkers(errors);
 
     if (errors.empty()) {
-        factory = parsed_fac;
+        factory = Factory(std::move(parsed_items), std::move(parsed_machines));
         cache.is_dirty = false;
     }
 }
