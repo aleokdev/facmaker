@@ -38,7 +38,7 @@ public:
     using ItemsT = std::unordered_map<Item::NameT, Item>;
     using ItemNodesT = std::unordered_map<Item::NameT, ItemNode>;
 
-    Factory(ItemsT&& items, MachinesT&& machines);
+    Factory(ItemsT&& items, MachinesT&& machines, std::size_t ticks_to_simulate);
 
     /// The machines (processing nodes) in this factory.
     const MachinesT& machines() const { return _machines; }
@@ -50,6 +50,8 @@ public:
     const ItemNamesT& outputs() const { return _outputs; }
     /// A generated map of the relationship of items with the machines in this factory.
     const ItemNodesT& item_nodes() const { return _item_nodes; }
+    /// The amount of ticks simulated for the item processing.
+    std::size_t ticks_simulated() const { return _ticks_simulated; }
 
 private:
     MachinesT _machines;
@@ -57,6 +59,7 @@ private:
     ItemNamesT _inputs;
     ItemNamesT _outputs;
     ItemNodesT _item_nodes;
+    std::size_t _ticks_simulated;
 };
 
 } // namespace fmk

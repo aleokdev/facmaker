@@ -38,17 +38,27 @@ constexpr std::string_view starting_program = R"({
                 "Iron Ingot": 1
             },
             "time": 200
+        },
+        {
+        	"name": "Test",
+        	"inputs": {},
+        	"outputs": {
+        		"Test": 1
+        	},
+        	"time": 1
         }
     ],
     "outputs": {
-        "Iron Ingot": 0
-    }
+        "Iron Ingot": 0,
+        "Test": 0
+    },
+    "simulate": 10
 }
 )";
 
 namespace fmk {
 
-FactoryEditor::FactoryEditor() : factory({}, {}) {
+FactoryEditor::FactoryEditor() : factory({}, {}, 0) {
     imnodes_ctx = imnodes::EditorContextCreate();
     program_editor.SetText(std::string(starting_program.data()));
     program_editor.SetShowWhitespaces(false);
@@ -63,34 +73,26 @@ void FactoryEditor::draw() {
     update_program_editor();
 }
 
-void FactoryEditor::update_processing_graph() {
-    ImGui::SetNextWindowSize(ImVec2{500, 500}, ImGuiCond_Appearing);
-    ImGui::Begin("Factory Displayer");
+namespace {
 
-    if (cache.is_dirty) {
-        imnodes::PushColorStyle(imnodes::ColorStyle_GridBackground, 0x2e2e2eff);
-    }
-    imnodes::BeginNodeEditor();
-
-    std::vector<int> factory_input_uids;
-    std::vector<int> factory_output_uids;
-    std::unordered_map<Item::NameT, int> item_uids;
-
-    int next_uid = 1;
+void draw_factory_inputs(const Factory& factory,
+                         int* next_uid,
+                         std::unordered_map<Item::NameT, int>& item_uids) {
     for (auto& input : factory.inputs()) {
-        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar, 0xff + ((next_uid * 50) % 0xFF << 8) |
-                                                                  ((next_uid * 186) % 0xFF << 16) |
-                                                                  ((next_uid * 67) % 0xFF << 24));
-        imnodes::BeginNode(next_uid++);
-        imnodes::SetNodeGridSpacePos(next_uid - 1,
-                                     ImVec2{0, static_cast<float>(next_uid - 1) * 50.f});
+        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar,
+                                0xff + ((*next_uid * 50) % 0xFF << 8) |
+                                    ((*next_uid * 186) % 0xFF << 16) |
+                                    ((*next_uid * 67) % 0xFF << 24));
+        imnodes::BeginNode((*next_uid)++);
+        imnodes::SetNodeGridSpacePos(*next_uid - 1,
+                                     ImVec2{0, static_cast<float>(*next_uid - 1) * 50.f});
 
         imnodes::BeginNodeTitleBar();
         ImGui::TextUnformatted("Input");
         imnodes::EndNodeTitleBar();
 
-        item_uids[std::string(input)] = next_uid;
-        imnodes::BeginOutputAttribute(next_uid++);
+        item_uids[std::string(input)] = *next_uid;
+        imnodes::BeginOutputAttribute((*next_uid)++);
         ImGui::Text("%s", input.c_str());
         imnodes::EndOutputAttribute();
 
@@ -98,29 +100,35 @@ void FactoryEditor::update_processing_graph() {
 
         imnodes::PopColorStyle();
     }
+}
 
+void draw_factory_machines(const Factory& factory,
+                           int* next_uid,
+                           std::vector<int>& factory_input_uids,
+                           std::vector<int>& factory_output_uids) {
     for (auto& machine : factory.machines()) {
-        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar, 0xff + ((next_uid * 50) % 0xFF << 8) |
-                                                                  ((next_uid * 186) % 0xFF << 16) |
-                                                                  ((next_uid * 67) % 0xFF << 24));
-        imnodes::BeginNode(next_uid++);
-        imnodes::SetNodeGridSpacePos(next_uid - 1,
-                                     ImVec2{0, static_cast<float>(next_uid - 1) * 50.f});
+        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar,
+                                0xff + ((*next_uid * 50) % 0xFF << 8) |
+                                    ((*next_uid * 186) % 0xFF << 16) |
+                                    ((*next_uid * 67) % 0xFF << 24));
+        imnodes::BeginNode((*next_uid)++);
+        imnodes::SetNodeGridSpacePos(*next_uid - 1,
+                                     ImVec2{0, static_cast<float>(*next_uid - 1) * 50.f});
 
         imnodes::BeginNodeTitleBar();
         ImGui::TextUnformatted(machine.name.c_str());
         imnodes::EndNodeTitleBar();
 
         for (auto input : machine.inputs) {
-            factory_input_uids.emplace_back(next_uid);
-            imnodes::BeginInputAttribute(next_uid++);
+            factory_input_uids.emplace_back(*next_uid);
+            imnodes::BeginInputAttribute((*next_uid)++);
             ImGui::Text("%i %s", input.quantity, input.item.c_str());
             imnodes::EndInputAttribute();
         }
 
         for (auto output : machine.outputs) {
-            factory_output_uids.emplace_back(next_uid);
-            imnodes::BeginOutputAttribute(next_uid++);
+            factory_output_uids.emplace_back(*next_uid);
+            imnodes::BeginOutputAttribute((*next_uid)++);
             ImGui::Indent(40);
             ImGui::Text("%i %s", output.quantity, output.item.c_str());
             imnodes::EndOutputAttribute();
@@ -132,16 +140,19 @@ void FactoryEditor::update_processing_graph() {
 
         imnodes::PopColorStyle();
     }
+}
 
-    int first_output_uid = next_uid + 1;
-
+void draw_factory_outputs(const Factory& factory,
+                          int* next_uid,
+                          std::unordered_map<Item::NameT, int>& item_uids) {
     for (auto& output : factory.outputs()) {
-        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar, 0xff + ((next_uid * 50) % 0xFF << 8) |
-                                                                  ((next_uid * 186) % 0xFF << 16) |
-                                                                  ((next_uid * 67) % 0xFF << 24));
-        imnodes::BeginNode(next_uid++);
-        imnodes::SetNodeGridSpacePos(next_uid - 1,
-                                     ImVec2{0, static_cast<float>(next_uid - 1) * 50.f});
+        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar,
+                                0xff + ((*next_uid * 50) % 0xFF << 8) |
+                                    ((*next_uid * 186) % 0xFF << 16) |
+                                    ((*next_uid * 67) % 0xFF << 24));
+        imnodes::BeginNode((*next_uid)++);
+        imnodes::SetNodeGridSpacePos(*next_uid - 1,
+                                     ImVec2{0, static_cast<float>(*next_uid - 1) * 50.f});
 
         imnodes::BeginNodeTitleBar();
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
@@ -154,25 +165,38 @@ void FactoryEditor::update_processing_graph() {
         ImGui::PopStyleColor();
         imnodes::EndNodeTitleBar();
 
-        item_uids[std::string(output)] = next_uid;
-        imnodes::BeginInputAttribute(next_uid++);
+        item_uids[std::string(output)] = *next_uid;
+        imnodes::BeginInputAttribute((*next_uid)++);
         ImGui::Text("%s", output.c_str());
         imnodes::EndInputAttribute();
 
-        ImPlot::SetNextPlotLimits(0, 6, 0, 10, ImGuiCond_Always);
-        double ticks_x[] = {0, 3, 6};
+        ImPlot::SetNextPlotLimits(1, factory.ticks_simulated() + 1, 0, 10,
+                                  expand_graph ? ImGuiCond_Once : ImGuiCond_Always);
+        double ticks_x[] = {1, static_cast<double>(factory.ticks_simulated()) / 2,
+                            static_cast<double>(factory.ticks_simulated())};
         ImPlot::SetNextPlotTicksX(ticks_x, 3);
         double ticks_y[] = {0, 5, 10};
         ImPlot::SetNextPlotTicksY(ticks_y, 3);
-        ImPlot::PushStyleColor(ImPlotCol_FrameBg, ImVec4(0,0,0,0));
+        ImPlot::PushStyleColor(ImPlotCol_FrameBg, ImVec4(0, 0, 0, 0));
         ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
         ImPlot::PushStyleVar(ImPlotStyleVar_LabelPadding, ImVec2(0.75f, 1));
-        ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(expand_graph ? 5 : 0, 5));
-        if (ImPlot::BeginPlot("Output", "Tick", "Items", expand_graph ? ImVec2(400, 200) : ImVec2(100, 50),
-                              ImPlotFlags_NoChild | ImPlotFlags_CanvasOnly, expand_graph ? 0 : ImPlotAxisFlags_NoDecorations, expand_graph ? 0 : ImPlotAxisFlags_NoLabel)) {
-            int x[] = {0, 1, 2, 3, 4, 5, 6};
-            int y[] = {1, 5, 2, 8, 3, 7, 8};
-            ImPlot::PlotShaded(output.c_str(), x, y, 7);
+        ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(expand_graph ? 10 : 0, 5));
+        if (ImPlot::BeginPlot("Output", "Tick", "Items",
+                              expand_graph ? ImVec2(400, 200) : ImVec2(100, 50),
+                              (expand_graph ? 0 : ImPlotFlags_NoChild) | ImPlotFlags_CanvasOnly,
+                              expand_graph ? 0 : ImPlotAxisFlags_NoDecorations,
+                              expand_graph ? 0 : ImPlotAxisFlags_NoLabel)) {
+            auto plot_size = factory.items().at(output).quantity_graph.container().size();
+
+            // Shift the X axis one value to the left so that the total tick count equals the
+            // last value plotted
+            std::vector<int> plot_x(plot_size);
+            for (std::size_t i = 1; i <= plot_size; i++) { plot_x[i - 1] = i; }
+
+            ImPlot::PlotStairs(output.c_str(), plot_x.data(),
+                               factory.items().at(output).quantity_graph.container().data(),
+                               plot_size);
+
             ImPlot::EndPlot();
         }
         ImPlot::PopStyleVar();
@@ -183,24 +207,53 @@ void FactoryEditor::update_processing_graph() {
 
         imnodes::PopColorStyle();
     }
+}
 
+void draw_factory_links(const Factory& factory,
+                        int* next_uid,
+                        std::vector<int>& factory_input_uids,
+                        std::vector<int>& factory_output_uids,
+                        std::unordered_map<Item::NameT, int>& item_uids) {
     for (auto& [item_name, node] : factory.item_nodes()) {
         for (auto& input : node.inputs) {
             for (auto& output : node.outputs) {
-                imnodes::Link(next_uid++, factory_input_uids[input], factory_output_uids[output]);
+                imnodes::Link((*next_uid)++, factory_input_uids[input],
+                              factory_output_uids[output]);
             }
         }
 
         if (factory.items().at(item_name).type == Item::NodeType::Input) {
             for (auto& input : node.inputs) {
-                imnodes::Link(next_uid++, factory_input_uids[input], item_uids[item_name]);
+                imnodes::Link((*next_uid)++, factory_input_uids[input], item_uids[item_name]);
             }
         } else if (factory.items().at(item_name).type == Item::NodeType::Output) {
             for (auto& output : node.outputs) {
-                imnodes::Link(next_uid++, item_uids[item_name], factory_output_uids[output]);
+                imnodes::Link((*next_uid)++, item_uids[item_name], factory_output_uids[output]);
             }
         }
     }
+}
+
+} // namespace
+
+void FactoryEditor::update_processing_graph() {
+    ImGui::SetNextWindowSize(ImVec2{500, 500}, ImGuiCond_Appearing);
+    ImGui::Begin("Factory Displayer");
+
+    if (cache.is_dirty) {
+        imnodes::PushColorStyle(imnodes::ColorStyle_GridBackground, 0x2e2e2eff);
+    }
+    imnodes::BeginNodeEditor();
+
+    std::vector<int> factory_input_uids;
+    std::vector<int> factory_output_uids;
+    std::unordered_map<Item::NameT, int> item_uids;
+    int next_uid = 1;
+
+    draw_factory_inputs(factory, &next_uid, item_uids);
+    draw_factory_machines(factory, &next_uid, factory_input_uids, factory_output_uids);
+    draw_factory_outputs(factory, &next_uid, item_uids);
+    draw_factory_links(factory, &next_uid, factory_input_uids, factory_output_uids, item_uids);
 
     imnodes::EndNodeEditor();
     if (cache.is_dirty) {
@@ -223,6 +276,7 @@ void FactoryEditor::parse_program() {
     TextEditor::ErrorMarkers errors;
     Factory::MachinesT parsed_machines;
     Factory::ItemsT parsed_items;
+    std::size_t ticks_to_simulate = 6000;
     cache.is_dirty = true;
 
     json::error_code parse_error;
@@ -328,6 +382,13 @@ void FactoryEditor::parse_program() {
                     errors.insert({1, "\"machines\" must be an array"});
                 }
             }
+            if (auto ticks_val = obj->if_contains("simulate")) {
+                if (auto ticks = ticks_val->if_int64()) {
+                    ticks_to_simulate = *ticks;
+                } else {
+                    errors.insert({1, "\"simulate\" value must be an integer"});
+                }
+            }
         } else {
             errors.insert({1, "Program must start with a JSON object"});
         }
@@ -336,7 +397,7 @@ void FactoryEditor::parse_program() {
     program_editor.SetErrorMarkers(errors);
 
     if (errors.empty()) {
-        factory = Factory(std::move(parsed_items), std::move(parsed_machines));
+        factory = Factory(std::move(parsed_items), std::move(parsed_machines), ticks_to_simulate);
         cache.is_dirty = false;
     }
 }

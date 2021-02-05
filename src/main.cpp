@@ -5,8 +5,8 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <imgui.h>
-#include <implot.h>
 #include <imnodes.h>
+#include <implot.h>
 
 #include "editor/factory_editor.hpp"
 
