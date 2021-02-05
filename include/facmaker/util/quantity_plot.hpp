@@ -21,10 +21,12 @@ public:
     /// Inserts values coming from the last available one until `tick`.
     void extrapolate_until(std::size_t tick);
 
-    const ContainerT& container() const;
+    const ContainerT& container() const { return _container; }
+    int max_value() const { return _container[_max_value_i]; }
 
 private:
     ContainerT _container;
+    std::size_t _max_value_i = -1;
 };
 
 } // namespace fmk::util

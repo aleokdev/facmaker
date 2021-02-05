@@ -21,6 +21,7 @@ public:
 private:
     void update_processing_graph();
     void update_program_editor();
+    void update_item_displayer();
     void parse_program();
 
     struct Cache {

@@ -14,7 +14,13 @@ void QuantityPlot::change_value(std::size_t tick, int mod) {
         extrapolate_until(tick);
     }
 
-    _container[tick] += mod;
+    auto new_value = _container[tick] += mod;
+
+    if (_max_value_i == static_cast<std::size_t>(-1)) {
+        _max_value_i = tick;
+    } else if (new_value > _container[_max_value_i]) {
+        _max_value_i = tick;
+    }
 }
 
 void QuantityPlot::extrapolate_until(std::size_t tick) {
@@ -23,7 +29,5 @@ void QuantityPlot::extrapolate_until(std::size_t tick) {
         _container.emplace_back(last_element);
     }
 }
-
-const QuantityPlot::ContainerT& QuantityPlot::container() const { return _container; }
 
 } // namespace fmk::util

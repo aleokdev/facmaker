@@ -58,30 +58,19 @@ constexpr std::string_view starting_program = R"({
 
 namespace fmk {
 
-FactoryEditor::FactoryEditor() : factory({}, {}, 0) {
-    imnodes_ctx = imnodes::EditorContextCreate();
-    program_editor.SetText(std::string(starting_program.data()));
-    program_editor.SetShowWhitespaces(false);
-    parse_program();
-
-    imnodes::EditorContextSet(imnodes_ctx);
-    imnodes::EditorContextResetPanning(ImVec2{50, 50});
-}
-
-void FactoryEditor::draw() {
-    update_processing_graph();
-    update_program_editor();
-}
-
 namespace {
 
 void draw_item_graph(const Factory& factory, Item::NameT item_name, bool expanded = true) {
-    ImPlot::SetNextPlotLimits(1, factory.ticks_simulated() + 1, 0, 10,
-                              expanded ? ImGuiCond_Once : ImGuiCond_Always);
+    auto& item = factory.items().at(item_name);
+
+    ImPlot::SetNextPlotLimits(1, factory.ticks_simulated() + 1, 0,
+                              item.quantity_graph.max_value() + 1,
+                              expanded ? ImGuiCond_Appearing : ImGuiCond_Always);
     double ticks_x[] = {1, static_cast<double>(factory.ticks_simulated()) / 2,
                         static_cast<double>(factory.ticks_simulated())};
     ImPlot::SetNextPlotTicksX(ticks_x, 3);
-    double ticks_y[] = {0, 5, 10};
+    double ticks_y[] = {0, static_cast<double>(item.quantity_graph.max_value()) / 2,
+                        static_cast<double>(item.quantity_graph.max_value())};
     ImPlot::SetNextPlotTicksY(ticks_y, 3);
     ImPlot::PushStyleColor(ImPlotCol_FrameBg, ImVec4(0, 0, 0, 0));
     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
@@ -91,15 +80,14 @@ void draw_item_graph(const Factory& factory, Item::NameT item_name, bool expande
             item_name.c_str(), "Tick", "Items", expanded ? ImVec2(400, 200) : ImVec2(100, 50),
             (expanded ? 0 : ImPlotFlags_NoChild) | ImPlotFlags_CanvasOnly ^ ImPlotFlags_NoTitle,
             expanded ? 0 : ImPlotAxisFlags_NoDecorations, expanded ? 0 : ImPlotAxisFlags_NoLabel)) {
-        auto plot_size = factory.items().at(item_name).quantity_graph.container().size();
+        auto plot_size = item.quantity_graph.container().size();
 
         // Shift the X axis one value to the left so that the total tick count equals the
         // last value plotted
         std::vector<int> plot_x(plot_size);
         for (std::size_t i = 1; i <= plot_size; i++) { plot_x[i - 1] = i; }
 
-        ImPlot::PlotStairs(item_name.c_str(), plot_x.data(),
-                           factory.items().at(item_name).quantity_graph.container().data(),
+        ImPlot::PlotStairs(item_name.c_str(), plot_x.data(), item.quantity_graph.container().data(),
                            plot_size);
 
         ImPlot::EndPlot();
@@ -237,6 +225,22 @@ void draw_factory_links(const Factory& factory,
 
 } // namespace
 
+FactoryEditor::FactoryEditor() : factory({}, {}, 0) {
+    imnodes_ctx = imnodes::EditorContextCreate();
+    program_editor.SetText(std::string(starting_program.data()));
+    program_editor.SetShowWhitespaces(false);
+    parse_program();
+
+    imnodes::EditorContextSet(imnodes_ctx);
+    imnodes::EditorContextResetPanning(ImVec2{50, 50});
+}
+
+void FactoryEditor::draw() {
+    update_processing_graph();
+    update_program_editor();
+    update_item_displayer();
+}
+
 void FactoryEditor::update_processing_graph() {
     ImGui::SetNextWindowSize(ImVec2{500, 500}, ImGuiCond_Appearing);
     ImGui::Begin("Factory Displayer");
@@ -270,6 +274,12 @@ void FactoryEditor::update_program_editor() {
     if (program_editor.IsTextChanged()) {
         parse_program();
     }
+    ImGui::End();
+}
+
+void FactoryEditor::update_item_displayer() {
+    ImGui::Begin("Item Displayer");
+    for (auto& [item_name, _] : factory.items()) { draw_item_graph(factory, item_name); }
     ImGui::End();
 }
 
