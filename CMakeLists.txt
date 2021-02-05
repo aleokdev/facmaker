@@ -4,6 +4,13 @@ project(facmaker CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    message(STATUS "Using debug mode")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG")
+else()
+    message(STATUS "Using build type ${CMAKE_BUILD_TYPE}")
+endif()
+
 add_executable(facmaker
     "src/main.cpp"
     "src/editor/factory_editor.cpp"
