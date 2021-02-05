@@ -235,6 +235,8 @@ FactoryEditor::FactoryEditor() : factory({}, {}, 0) {
     imnodes::EditorContextResetPanning(ImVec2{50, 50});
 }
 
+FactoryEditor::~FactoryEditor() { imnodes::EditorContextFree(imnodes_ctx); }
+
 void FactoryEditor::draw() {
     update_processing_graph();
     update_program_editor();

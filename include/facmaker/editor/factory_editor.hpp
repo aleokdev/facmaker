@@ -16,6 +16,8 @@ namespace fmk {
 class FactoryEditor {
 public:
     FactoryEditor();
+    ~FactoryEditor();
+
     void draw();
 
 private:
