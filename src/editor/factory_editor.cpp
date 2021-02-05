@@ -75,6 +75,40 @@ void FactoryEditor::draw() {
 
 namespace {
 
+void draw_item_graph(const Factory& factory, Item::NameT item_name, bool expanded = true) {
+    ImPlot::SetNextPlotLimits(1, factory.ticks_simulated() + 1, 0, 10,
+                              expanded ? ImGuiCond_Once : ImGuiCond_Always);
+    double ticks_x[] = {1, static_cast<double>(factory.ticks_simulated()) / 2,
+                        static_cast<double>(factory.ticks_simulated())};
+    ImPlot::SetNextPlotTicksX(ticks_x, 3);
+    double ticks_y[] = {0, 5, 10};
+    ImPlot::SetNextPlotTicksY(ticks_y, 3);
+    ImPlot::PushStyleColor(ImPlotCol_FrameBg, ImVec4(0, 0, 0, 0));
+    ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
+    ImPlot::PushStyleVar(ImPlotStyleVar_LabelPadding, ImVec2(0.75f, 1));
+    ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(expanded ? 10 : 0, 5));
+    if (ImPlot::BeginPlot(
+            item_name.c_str(), "Tick", "Items", expanded ? ImVec2(400, 200) : ImVec2(100, 50),
+            (expanded ? 0 : ImPlotFlags_NoChild) | ImPlotFlags_CanvasOnly ^ ImPlotFlags_NoTitle,
+            expanded ? 0 : ImPlotAxisFlags_NoDecorations, expanded ? 0 : ImPlotAxisFlags_NoLabel)) {
+        auto plot_size = factory.items().at(item_name).quantity_graph.container().size();
+
+        // Shift the X axis one value to the left so that the total tick count equals the
+        // last value plotted
+        std::vector<int> plot_x(plot_size);
+        for (std::size_t i = 1; i <= plot_size; i++) { plot_x[i - 1] = i; }
+
+        ImPlot::PlotStairs(item_name.c_str(), plot_x.data(),
+                           factory.items().at(item_name).quantity_graph.container().data(),
+                           plot_size);
+
+        ImPlot::EndPlot();
+    }
+    ImPlot::PopStyleVar();
+    ImPlot::PopStyleVar();
+    ImPlot::PopStyleColor();
+}
+
 void draw_factory_inputs(const Factory& factory,
                          int* next_uid,
                          std::unordered_map<Item::NameT, int>& item_uids) {
@@ -167,41 +201,8 @@ void draw_factory_outputs(const Factory& factory,
 
         item_uids[std::string(output)] = *next_uid;
         imnodes::BeginInputAttribute((*next_uid)++);
-        ImGui::Text("%s", output.c_str());
+        draw_item_graph(factory, output, expand_graph);
         imnodes::EndInputAttribute();
-
-        ImPlot::SetNextPlotLimits(1, factory.ticks_simulated() + 1, 0, 10,
-                                  expand_graph ? ImGuiCond_Once : ImGuiCond_Always);
-        double ticks_x[] = {1, static_cast<double>(factory.ticks_simulated()) / 2,
-                            static_cast<double>(factory.ticks_simulated())};
-        ImPlot::SetNextPlotTicksX(ticks_x, 3);
-        double ticks_y[] = {0, 5, 10};
-        ImPlot::SetNextPlotTicksY(ticks_y, 3);
-        ImPlot::PushStyleColor(ImPlotCol_FrameBg, ImVec4(0, 0, 0, 0));
-        ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
-        ImPlot::PushStyleVar(ImPlotStyleVar_LabelPadding, ImVec2(0.75f, 1));
-        ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(expand_graph ? 10 : 0, 5));
-        if (ImPlot::BeginPlot("Output", "Tick", "Items",
-                              expand_graph ? ImVec2(400, 200) : ImVec2(100, 50),
-                              (expand_graph ? 0 : ImPlotFlags_NoChild) | ImPlotFlags_CanvasOnly,
-                              expand_graph ? 0 : ImPlotAxisFlags_NoDecorations,
-                              expand_graph ? 0 : ImPlotAxisFlags_NoLabel)) {
-            auto plot_size = factory.items().at(output).quantity_graph.container().size();
-
-            // Shift the X axis one value to the left so that the total tick count equals the
-            // last value plotted
-            std::vector<int> plot_x(plot_size);
-            for (std::size_t i = 1; i <= plot_size; i++) { plot_x[i - 1] = i; }
-
-            ImPlot::PlotStairs(output.c_str(), plot_x.data(),
-                               factory.items().at(output).quantity_graph.container().data(),
-                               plot_size);
-
-            ImPlot::EndPlot();
-        }
-        ImPlot::PopStyleVar();
-        ImPlot::PopStyleVar();
-        ImPlot::PopStyleColor();
 
         imnodes::EndNode();
 
