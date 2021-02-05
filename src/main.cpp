@@ -78,9 +78,12 @@ int main() {
         glfwSwapBuffers(window);
     }
 
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     ImPlot::DestroyContext();
 
+    glfwDestroyWindow(window);
     glfwTerminate();
     imnodes::Shutdown();
     return 0;
