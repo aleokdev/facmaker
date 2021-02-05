@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -27,9 +28,24 @@ struct Machine {
 };
 
 struct ItemNode {
-    std::unordered_set<Machine::IndexT> inputs;
-    std::unordered_set<Machine::IndexT> outputs;
+    struct Link {
+        Machine::IndexT machine;
+        std::size_t io_index;
+    };
+
+    struct LinkHash {
+        std::size_t operator()(const ItemNode::Link& link) const noexcept {
+            return link.io_index ^ (link.machine << 1);
+        }
+    };
+
+    std::unordered_set<Link, LinkHash> inputs;
+    std::unordered_set<Link, LinkHash> outputs;
 };
+
+inline bool operator==(const ItemNode::Link& a, const ItemNode::Link& b) {
+    return a.machine == b.machine && a.io_index == b.io_index;
+}
 
 class Factory {
 public:

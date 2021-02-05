@@ -33,12 +33,16 @@ Factory::Factory(ItemsT&& items, MachinesT&& machines, std::size_t ticks_to_simu
 Factory::ItemNodesT calculate_links(const Factory::MachinesT& machines) {
     Factory::ItemNodesT result;
 
-    Machine::IndexT machine_i = 0;
-    for (auto& machine : machines) {
-        for (auto& input : machine.inputs) { result[input.item].inputs.insert(machine_i); }
-        for (auto& output : machine.outputs) { result[output.item].outputs.insert(machine_i); }
+    for (Machine::IndexT machine_i = 0; machine_i < machines.size(); machine_i++) {
+        auto& machine = machines[machine_i];
 
-        machine_i++;
+        for (std::size_t input_i = 0; input_i < machine.inputs.size(); input_i++) {
+            result[machine.inputs[input_i].item].inputs.insert(ItemNode::Link{machine_i, input_i});
+        }
+        for (std::size_t output_i = 0; output_i < machine.outputs.size(); output_i++) {
+            result[machine.outputs[output_i].item].outputs.insert(
+                ItemNode::Link{machine_i, output_i});
+        }
     }
 
     return result;
@@ -79,14 +83,14 @@ void simulate_item_evolution(Factory::ItemsT& items,
             auto& machine = machines[machine_i];
 
             // Check if this machine can do a processing cycle
-            bool requirements_fulfilled =
-                std::all_of(machine.inputs.begin(), machine.inputs.end(),
-                            [tick, &items](const ItemStream& required) -> bool {
-                                auto& item = items.at(required.item);
-                                return item.type == Item::NodeType::Input ||
-                                       required.quantity >
-                                           items.at(required.item).quantity_graph.container()[tick];
-                            });
+            bool requirements_fulfilled = std::all_of(
+                machine.inputs.begin(), machine.inputs.end(),
+                [tick, &items](const ItemStream& required) -> bool {
+                    auto& item = items.at(required.item);
+                    return item.type == Item::NodeType::Input ||
+                           items.at(required.item).quantity_graph.extrapolate_until(tick) >=
+                               required.quantity;
+                });
 
             // Check if this machine is not currently busy with a previous cycle
             bool is_machine_free = tasks.find(machine_i) == tasks.end();

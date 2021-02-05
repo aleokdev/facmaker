@@ -19,7 +19,8 @@ public:
     void change_value(std::size_t tick, int modifier);
 
     /// Inserts values coming from the last available one until `tick`.
-    void extrapolate_until(std::size_t tick);
+    /// @returns The element extrapolated.
+    int extrapolate_until(std::size_t tick);
 
     const ContainerT& container() const { return _container; }
     int max_value() const { return _max_value_i == -1 ? 0 : _container[_max_value_i]; }

@@ -46,6 +46,16 @@ constexpr std::string_view starting_program = R"({
         		"Test": 1
         	},
         	"time": 1
+        },
+        {
+        	"name": "Test2",
+        	"inputs": {
+                "Test": 1
+            },
+        	"outputs": {
+        		"Foo": 1
+        	},
+        	"time": 1
         }
     ],
     "outputs": {
@@ -127,11 +137,18 @@ void draw_factory_inputs(const Factory& factory,
     }
 }
 
+using MachineIoUidMapT = std::vector<int>;
+using FactoryIoUidMapT = std::vector<MachineIoUidMapT>;
+
 void draw_factory_machines(const Factory& factory,
                            int* next_uid,
-                           std::vector<int>& factory_input_uids,
-                           std::vector<int>& factory_output_uids) {
-    for (auto& machine : factory.machines()) {
+                           FactoryIoUidMapT& factory_input_uids,
+                           FactoryIoUidMapT& factory_output_uids) {
+    factory_input_uids.resize(factory.machines().size());
+    factory_output_uids.resize(factory.machines().size());
+    for (std::size_t machine_i = 0; machine_i < factory.machines().size(); machine_i++) {
+        auto& machine = factory.machines()[machine_i];
+
         imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar,
                                 0xff + ((*next_uid * 50) % 0xFF << 8) |
                                     ((*next_uid * 186) % 0xFF << 16) |
@@ -145,14 +162,14 @@ void draw_factory_machines(const Factory& factory,
         imnodes::EndNodeTitleBar();
 
         for (auto input : machine.inputs) {
-            factory_input_uids.emplace_back(*next_uid);
+            factory_input_uids[machine_i].emplace_back(*next_uid);
             imnodes::BeginInputAttribute((*next_uid)++);
             ImGui::Text("%i %s", input.quantity, input.item.c_str());
             imnodes::EndInputAttribute();
         }
 
         for (auto output : machine.outputs) {
-            factory_output_uids.emplace_back(*next_uid);
+            factory_output_uids[machine_i].emplace_back(*next_uid);
             imnodes::BeginOutputAttribute((*next_uid)++);
             ImGui::Indent(40);
             ImGui::Text("%i %s", output.quantity, output.item.c_str());
@@ -203,24 +220,28 @@ void draw_factory_outputs(const Factory& factory,
 
 void draw_factory_links(const Factory& factory,
                         int* next_uid,
-                        std::vector<int>& factory_input_uids,
-                        std::vector<int>& factory_output_uids,
+                        const FactoryIoUidMapT& factory_input_uids,
+                        const FactoryIoUidMapT& factory_output_uids,
                         std::unordered_map<Item::NameT, int>& item_uids) {
     for (auto& [item_name, node] : factory.item_nodes()) {
         for (auto& input : node.inputs) {
             for (auto& output : node.outputs) {
-                imnodes::Link((*next_uid)++, factory_input_uids[input],
-                              factory_output_uids[output]);
+                imnodes::Link((*next_uid)++, factory_input_uids[input.machine][input.io_index],
+                              factory_output_uids[output.machine][output.io_index]);
             }
         }
 
-        if (factory.items().at(item_name).type == Item::NodeType::Input) {
+        auto& item = factory.items().at(item_name);
+
+        if (item.type == Item::NodeType::Input) {
             for (auto& input : node.inputs) {
-                imnodes::Link((*next_uid)++, factory_input_uids[input], item_uids[item_name]);
+                imnodes::Link((*next_uid)++, factory_input_uids[input.machine][input.io_index],
+                              item_uids[item_name]);
             }
-        } else if (factory.items().at(item_name).type == Item::NodeType::Output) {
+        } else if (item.type == Item::NodeType::Output) {
             for (auto& output : node.outputs) {
-                imnodes::Link((*next_uid)++, item_uids[item_name], factory_output_uids[output]);
+                imnodes::Link((*next_uid)++, item_uids[item_name],
+                              factory_output_uids[output.machine][output.io_index]);
             }
         }
     }
@@ -257,8 +278,8 @@ void FactoryEditor::update_processing_graph() {
     }
     imnodes::BeginNodeEditor();
 
-    std::vector<int> factory_input_uids;
-    std::vector<int> factory_output_uids;
+    FactoryIoUidMapT factory_input_uids;
+    FactoryIoUidMapT factory_output_uids;
     std::unordered_map<Item::NameT, int> item_uids;
     int next_uid = 1;
 

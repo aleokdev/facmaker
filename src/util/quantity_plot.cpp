@@ -23,11 +23,12 @@ void QuantityPlot::change_value(std::size_t tick, int mod) {
     }
 }
 
-void QuantityPlot::extrapolate_until(std::size_t tick) {
+int QuantityPlot::extrapolate_until(std::size_t tick) {
     auto last_element = _container.size() == 0 ? 0 : _container.back();
     for (std::size_t i = _container.size(); i <= tick; i++) {
         _container.emplace_back(last_element);
     }
+    return last_element;
 }
 
 } // namespace fmk::util
