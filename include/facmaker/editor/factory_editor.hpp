@@ -37,6 +37,7 @@ private:
     Factory factory;
     imnodes::EditorContext* imnodes_ctx;
     TextEditor program_editor;
+    bool program_changed_this_frame = false;
 };
 
 } // namespace fmk

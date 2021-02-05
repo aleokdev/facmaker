@@ -60,12 +60,15 @@ namespace fmk {
 
 namespace {
 
-void draw_item_graph(const Factory& factory, Item::NameT item_name, bool expanded = true) {
+void draw_item_graph(const Factory& factory,
+                     Item::NameT item_name,
+                     bool expanded = true,
+                     bool reload_plot_limits = false) {
     auto& item = factory.items().at(item_name);
 
-    ImPlot::SetNextPlotLimits(1, factory.ticks_simulated() + 1, 0,
-                              item.quantity_graph.max_value() + 1,
-                              expanded ? ImGuiCond_Appearing : ImGuiCond_Always);
+    ImPlot::SetNextPlotLimits(
+        1, factory.ticks_simulated() + 1, 0, item.quantity_graph.max_value() + 1,
+        (expanded && !reload_plot_limits) ? ImGuiCond_Appearing : ImGuiCond_Always);
     double ticks_x[] = {1, static_cast<double>(factory.ticks_simulated()) / 2,
                         static_cast<double>(factory.ticks_simulated())};
     ImPlot::SetNextPlotTicksX(ticks_x, 3);
@@ -238,6 +241,8 @@ FactoryEditor::FactoryEditor() : factory({}, {}, 0) {
 FactoryEditor::~FactoryEditor() { imnodes::EditorContextFree(imnodes_ctx); }
 
 void FactoryEditor::draw() {
+    program_changed_this_frame = false;
+
     update_processing_graph();
     update_program_editor();
     update_item_displayer();
@@ -281,7 +286,9 @@ void FactoryEditor::update_program_editor() {
 
 void FactoryEditor::update_item_displayer() {
     ImGui::Begin("Item Displayer");
-    for (auto& [item_name, _] : factory.items()) { draw_item_graph(factory, item_name); }
+    for (auto& [item_name, _] : factory.items()) {
+        draw_item_graph(factory, item_name, true, program_changed_this_frame);
+    }
     ImGui::End();
 }
 
@@ -412,6 +419,7 @@ void FactoryEditor::parse_program() {
     if (errors.empty()) {
         factory = Factory(std::move(parsed_items), std::move(parsed_machines), ticks_to_simulate);
         cache.is_dirty = false;
+        program_changed_this_frame = true;
     }
 }
 
