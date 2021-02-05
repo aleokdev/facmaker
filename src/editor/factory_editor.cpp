@@ -1,6 +1,7 @@
 #include <boost/json.hpp>
 #include <imgui.h>
 #include <imnodes.h>
+#include <implot.h>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -143,13 +144,40 @@ void FactoryEditor::update_processing_graph() {
                                      ImVec2{0, static_cast<float>(next_uid - 1) * 50.f});
 
         imnodes::BeginNodeTitleBar();
-        ImGui::TextUnformatted("Output");
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0, 0, 0, 0));
+        bool expand_graph;
+        if ((expand_graph = ImGui::TreeNode("Output"))) {
+            ImGui::TreePop();
+        }
+        ImGui::PopStyleColor();
+        ImGui::PopStyleColor();
         imnodes::EndNodeTitleBar();
 
         item_uids[std::string(output)] = next_uid;
         imnodes::BeginInputAttribute(next_uid++);
         ImGui::Text("%s", output.c_str());
         imnodes::EndInputAttribute();
+
+        ImPlot::SetNextPlotLimits(0, 6, 0, 10, ImGuiCond_Always);
+        double ticks_x[] = {0, 3, 6};
+        ImPlot::SetNextPlotTicksX(ticks_x, 3);
+        double ticks_y[] = {0, 5, 10};
+        ImPlot::SetNextPlotTicksY(ticks_y, 3);
+        ImPlot::PushStyleColor(ImPlotCol_FrameBg, ImVec4(0,0,0,0));
+        ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
+        ImPlot::PushStyleVar(ImPlotStyleVar_LabelPadding, ImVec2(0.75f, 1));
+        ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(expand_graph ? 5 : 0, 5));
+        if (ImPlot::BeginPlot("Output", "Tick", "Items", expand_graph ? ImVec2(400, 200) : ImVec2(100, 50),
+                              ImPlotFlags_NoChild | ImPlotFlags_CanvasOnly, expand_graph ? 0 : ImPlotAxisFlags_NoDecorations, expand_graph ? 0 : ImPlotAxisFlags_NoLabel)) {
+            int x[] = {0, 1, 2, 3, 4, 5, 6};
+            int y[] = {1, 5, 2, 8, 3, 7, 8};
+            ImPlot::PlotShaded(output.c_str(), x, y, 7);
+            ImPlot::EndPlot();
+        }
+        ImPlot::PopStyleVar();
+        ImPlot::PopStyleVar();
+        ImPlot::PopStyleColor();
 
         imnodes::EndNode();
 

@@ -42,6 +42,7 @@ target_link_libraries(imtext PUBLIC imgui)
 add_library(implot STATIC
     "${CMAKE_CURRENT_SOURCE_DIR}/implot/implot.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/implot/implot_items.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/implot/implot_demo.cpp"
 )
 target_include_directories(implot PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/implot"

@@ -5,6 +5,7 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <imgui.h>
+#include <implot.h>
 #include <imnodes.h>
 
 #include "editor/factory_editor.hpp"
@@ -38,6 +39,7 @@ int main() {
     // Setup ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -61,6 +63,7 @@ int main() {
         ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
 
         ImGui::ShowDemoWindow();
+        ImPlot::ShowDemoWindow();
         editor.draw();
 
         ImGui::Render();
@@ -74,6 +77,9 @@ int main() {
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
     }
+
+    ImGui::DestroyContext();
+    ImPlot::DestroyContext();
 
     glfwTerminate();
     imnodes::Shutdown();
