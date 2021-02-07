@@ -5,6 +5,7 @@ set(BOOST_JSON_BUILD_FUZZERS OFF)
 set(BOOST_JSON_BUILD_TESTS OFF)
 set(BOOST_JSON_STANDALONE ON)
 add_subdirectory(json)
+add_subdirectory(fmt)
 
 add_library(ext INTERFACE)
 
@@ -49,4 +50,4 @@ target_include_directories(implot PUBLIC
 )
 target_link_libraries(implot PUBLIC imgui)
 
-target_link_libraries(ext INTERFACE glfw imgui GL glad imnodes imtext boost_json implot)
+target_link_libraries(ext INTERFACE glfw imgui GL glad imnodes imtext boost_json implot fmt)

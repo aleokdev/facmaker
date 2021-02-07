@@ -19,3 +19,6 @@
 [submodule "ext/implot"]
 	path = ext/implot
 	url = https://github.com/epezent/implot
+[submodule "ext/fmt"]
+	path = ext/fmt
+	url = https://github.com/fmtlib/fmt
