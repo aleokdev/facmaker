@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "item.hpp"
+#include "util/quantity_plot.hpp"
 
 namespace fmk {
 
@@ -47,35 +48,49 @@ inline bool operator==(const ItemNode::Link& a, const ItemNode::Link& b) {
     return a.machine == b.machine && a.io_index == b.io_index;
 }
 
-class Factory {
-public:
+struct Factory;
+struct Factory {
     using MachinesT = std::vector<Machine>;
-    using ItemNamesT = std::vector<Item::NameT>;
     using ItemsT = std::unordered_map<Item::NameT, Item>;
-    using ItemNodesT = std::unordered_map<Item::NameT, ItemNode>;
 
-    Factory(ItemsT&& items, MachinesT&& machines, std::size_t ticks_to_simulate);
-
-    /// The machines (processing nodes) in this factory.
-    const MachinesT& machines() const { return _machines; }
     /// The items being processed in this factory.
-    const ItemsT& items() const { return _items; }
-    /// A generated container with all the input item names in this factory.
-    const ItemNamesT& inputs() const { return _inputs; }
-    /// A generated container with all the output item names in this factory.
-    const ItemNamesT& outputs() const { return _outputs; }
-    /// A generated map of the relationship of items with the machines in this factory.
-    const ItemNodesT& item_nodes() const { return _item_nodes; }
-    /// The amount of ticks simulated for the item processing.
-    std::size_t ticks_simulated() const { return _ticks_simulated; }
+    ItemsT items;
+    /// The machines (processing nodes) in this factory.
+    MachinesT machines;
 
-private:
-    MachinesT _machines;
-    ItemsT _items;
-    ItemNamesT _inputs;
-    ItemNamesT _outputs;
-    ItemNodesT _item_nodes;
-    std::size_t _ticks_simulated;
+    class Cache {
+    public:
+        using ItemNamesT = std::vector<Item::NameT>;
+        using ItemNodesT = std::unordered_map<Item::NameT, ItemNode>;
+        using QuantityPlotsT = std::unordered_map<Item::NameT, util::QuantityPlot>;
+
+        Cache() {}
+
+        /// A generated container with quantity plots for all the items in this factory.
+        const QuantityPlotsT& plots() const { return _plots; }
+        /// A generated container with all the input item names in this factory.
+        const ItemNamesT& inputs() const { return _inputs; }
+        /// A generated container with all the output item names in this factory.
+        const ItemNamesT& outputs() const { return _outputs; }
+        /// A generated map of the relationship of items with the machines in this factory.
+        const ItemNodesT& item_nodes() const { return _item_nodes; }
+        /// The amount of ticks simulated for the item processing.
+        std::size_t ticks_simulated() const { return _ticks_simulated; }
+
+    private:
+        Cache(const Factory&, std::size_t ticks_to_simulate);
+        friend class Factory;
+
+        ItemNamesT _inputs;
+        ItemNamesT _outputs;
+        ItemNodesT _item_nodes;
+        QuantityPlotsT _plots;
+        std::size_t _ticks_simulated = 0;
+    };
+
+    Cache generate_cache(std::size_t ticks_to_simulate) const {
+        return Cache(*this, ticks_to_simulate);
+    };
 };
 
 } // namespace fmk

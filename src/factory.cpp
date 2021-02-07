@@ -4,16 +4,15 @@
 
 namespace fmk {
 
-Factory::ItemNodesT calculate_links(const Factory::MachinesT& machines);
-void simulate_item_evolution(Factory::ItemsT& items,
-                             const Factory::MachinesT& machines,
-                             const Factory::ItemNodesT& nodes,
-                             int ticks_to_simulate);
+Factory::Cache::ItemNodesT calculate_links(const Factory::MachinesT& machines);
+Factory::Cache::QuantityPlotsT simulate_item_evolution(const Factory::ItemsT& items,
+                                                       const Factory::MachinesT& machines,
+                                                       const Factory::Cache::ItemNodesT& nodes,
+                                                       int ticks_to_simulate);
 
-Factory::Factory(ItemsT&& items, MachinesT&& machines, std::size_t ticks_to_simulate) :
-    _items(std::move(items)), _machines(std::move(machines)),
-    _item_nodes(calculate_links(_machines)), _ticks_simulated(ticks_to_simulate) {
-    for (auto& [item_name, item] : _items) {
+Factory::Cache::Cache(const Factory& factory, std::size_t ticks_to_simulate) :
+    _item_nodes(calculate_links(factory.machines)), _ticks_simulated(ticks_to_simulate) {
+    for (auto& [item_name, item] : factory.items) {
         switch (item.type) {
             case Item::NodeType::Input: {
                 _inputs.emplace_back(item_name);
@@ -27,11 +26,12 @@ Factory::Factory(ItemsT&& items, MachinesT&& machines, std::size_t ticks_to_simu
         }
     }
 
-    simulate_item_evolution(_items, _machines, _item_nodes, ticks_to_simulate);
+    _plots =
+        simulate_item_evolution(factory.items, factory.machines, _item_nodes, ticks_to_simulate);
 }
 
-Factory::ItemNodesT calculate_links(const Factory::MachinesT& machines) {
-    Factory::ItemNodesT result;
+Factory::Cache::ItemNodesT calculate_links(const Factory::MachinesT& machines) {
+    Factory::Cache::ItemNodesT result;
 
     for (Machine::IndexT machine_i = 0; machine_i < machines.size(); machine_i++) {
         auto& machine = machines[machine_i];
@@ -48,12 +48,14 @@ Factory::ItemNodesT calculate_links(const Factory::MachinesT& machines) {
     return result;
 }
 
-void simulate_item_evolution(Factory::ItemsT& items,
-                             const Factory::MachinesT& machines,
-                             const Factory::ItemNodesT& nodes,
-                             int ticks_to_simulate) {
-    for (auto& [_, item] : items) {
-        item.quantity_graph = util::QuantityPlot(ticks_to_simulate, item.starting_quantity);
+Factory::Cache::QuantityPlotsT simulate_item_evolution(const Factory::ItemsT& items,
+                                                       const Factory::MachinesT& machines,
+                                                       const Factory::Cache::ItemNodesT& nodes,
+                                                       int ticks_to_simulate) {
+    Factory::Cache::QuantityPlotsT plots;
+    plots.reserve(items.size());
+    for (auto& [item_name, item] : items) {
+        plots[item_name] = util::QuantityPlot(ticks_to_simulate, item.starting_quantity);
     }
 
     struct ProcessingTask {
@@ -71,7 +73,7 @@ void simulate_item_evolution(Factory::ItemsT& items,
             if (tick >= task->second.starting_tick + machine.op_time.count()) {
                 // Add outputs and remove this task if so
                 for (auto& output : machine.outputs) {
-                    items.at(output.item).quantity_graph.change_value(tick, output.quantity);
+                    plots.at(output.item).change_value(tick, output.quantity);
                 }
                 task = tasks.erase(task);
             } else {
@@ -85,11 +87,10 @@ void simulate_item_evolution(Factory::ItemsT& items,
             // Check if this machine can do a processing cycle
             bool requirements_fulfilled = std::all_of(
                 machine.inputs.begin(), machine.inputs.end(),
-                [tick, &items](const ItemStream& required) -> bool {
+                [tick, &items, &plots](const ItemStream& required) -> bool {
                     auto& item = items.at(required.item);
                     return item.type == Item::NodeType::Input ||
-                           items.at(required.item).quantity_graph.extrapolate_until(tick) >=
-                               required.quantity;
+                           plots.at(required.item).extrapolate_until(tick) >= required.quantity;
                 });
 
             // Check if this machine is not currently busy with a previous cycle
@@ -98,7 +99,7 @@ void simulate_item_evolution(Factory::ItemsT& items,
             if (is_machine_free && requirements_fulfilled) {
                 // Remove items required
                 for (auto& input : machine.inputs) {
-                    items.at(input.item).quantity_graph.change_value(tick, -input.quantity);
+                    plots.at(input.item).change_value(tick, -input.quantity);
                 }
 
                 // Add processing task
@@ -107,7 +108,9 @@ void simulate_item_evolution(Factory::ItemsT& items,
         }
     }
 
-    for (auto& item : items) { item.second.quantity_graph.extrapolate_until(ticks_to_simulate); }
+    for (auto& [_, plot] : plots) { plot.extrapolate_until(ticks_to_simulate); }
+
+    return plots;
 }
 
 } // namespace fmk

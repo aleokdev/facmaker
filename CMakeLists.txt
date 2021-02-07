@@ -16,6 +16,7 @@ add_executable(facmaker
     "src/editor/factory_editor.cpp"
     "src/factory.cpp"
     "src/util/quantity_plot.cpp"
+    "src/util/more_imgui.cpp"
 )
 target_include_directories(facmaker PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/facmaker")
 
