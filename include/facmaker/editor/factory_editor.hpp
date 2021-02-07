@@ -1,6 +1,5 @@
 #pragma once
 
-#include <TextEditor.h>
 #include <imgui.h>
 #include <optional>
 #include <vector>
@@ -28,24 +27,23 @@ public:
 
 private:
     void update_processing_graph();
-    void update_program_editor();
     void update_item_displayer();
-    void parse_program();
+    void parse_factory_json(std::istream& input);
 
     struct Cache {
         Factory::Cache factory_cache;
         std::vector<ImVec2> machine_positions;
-
-        /// Whether if what is being drawn (the cache and factory) doesn't match up with the text
-        /// entered (the program).
-        mutable bool is_dirty = false;
     } cache;
 
+    struct LogMessage {
+        enum class Severity { Info, Warning, Error } severity;
+        std::string message;
+    };
+
     Factory factory;
+    std::vector<LogMessage> logs;
     imnodes::EditorContext* imnodes_ctx;
-    TextEditor program_editor;
     std::optional<PositionedMachine> new_machine;
-    bool program_changed_this_frame = false;
 };
 
 } // namespace fmk

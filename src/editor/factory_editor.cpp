@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <boost/json.hpp>
+#include <fmt/core.h>
 #include <imgui.h>
 #include <imnodes.h>
 #include <implot.h>
@@ -339,9 +340,8 @@ bool draw_machine_editor(const Factory& factory, PositionedMachine& m, int* next
 
 FactoryEditor::FactoryEditor() : factory{{}, {}} {
     imnodes_ctx = imnodes::EditorContextCreate();
-    program_editor.SetText(std::string(starting_program.data()));
-    program_editor.SetShowWhitespaces(false);
-    parse_program();
+    auto input_stream = std::istringstream(std::string(starting_program));
+    parse_factory_json(input_stream);
 
     imnodes::EditorContextSet(imnodes_ctx);
     imnodes::EditorContextResetPanning(ImVec2{50, 50});
@@ -350,10 +350,7 @@ FactoryEditor::FactoryEditor() : factory{{}, {}} {
 FactoryEditor::~FactoryEditor() { imnodes::EditorContextFree(imnodes_ctx); }
 
 void FactoryEditor::draw() {
-    program_changed_this_frame = false;
-
     update_processing_graph();
-    update_program_editor();
     update_item_displayer();
 }
 
@@ -361,9 +358,6 @@ void FactoryEditor::update_processing_graph() {
     ImGui::SetNextWindowSize(ImVec2{500, 500}, ImGuiCond_Appearing);
     ImGui::Begin("Factory Displayer");
 
-    if (cache.is_dirty) {
-        imnodes::PushColorStyle(imnodes::ColorStyle_GridBackground, 0x2e2e2eff);
-    }
     imnodes::BeginNodeEditor();
     ImVec2 editor_pos = ImGui::GetCursorScreenPos();
 
@@ -387,10 +381,6 @@ void FactoryEditor::update_processing_graph() {
 
     imnodes::EndNodeEditor();
 
-    if (cache.is_dirty) {
-        imnodes::PopColorStyle();
-    }
-
     if (ImGui::BeginPopupContextItem("_ngc")) {
         if (ImGui::MenuItem("New Machine")) {
             std::string new_machine_name = "Machine";
@@ -407,41 +397,33 @@ void FactoryEditor::update_processing_graph() {
     ImGui::End();
 }
 
-void FactoryEditor::update_program_editor() {
-    ImGui::Begin("Factory Programmer");
-    program_editor.Render("text_editor");
-    if (program_editor.IsTextChanged()) {
-        parse_program();
-    }
-    ImGui::End();
-}
-
 void FactoryEditor::update_item_displayer() {
     ImGui::Begin("Item Displayer");
     for (auto& [item_name, _] : factory.items) {
-        draw_item_graph(factory, cache.factory_cache, item_name, true, program_changed_this_frame);
+        draw_item_graph(factory, cache.factory_cache, item_name, true);
     }
     ImGui::End();
 }
 
-void FactoryEditor::parse_program() {
-    TextEditor::ErrorMarkers errors;
+void FactoryEditor::parse_factory_json(std::istream& input) {
     Factory::MachinesT parsed_machines;
     Factory::ItemsT parsed_items;
     std::size_t ticks_to_simulate = 6000;
-    cache.is_dirty = true;
+    bool had_errors = false;
 
     json::error_code parse_error;
-    std::istringstream ssinput = std::istringstream(program_editor.GetText());
     json::stream_parser parser;
     std::size_t line_i = 0;
-    for (std::string line; !parse_error && std::getline(ssinput, line); line_i++) {
+    for (std::string line; !parse_error && std::getline(input, line); line_i++) {
         parser.write_some(line, parse_error);
     }
     parser.finish(parse_error);
 
     if (parse_error) {
-        errors.insert({line_i, parse_error.message()});
+        logs.emplace_back(
+            LogMessage{LogMessage::Severity::Error, fmt::format("JSON parsing error on line {}: {}",
+                                                                line_i, parse_error.message())});
+        had_errors = true;
     } else {
         auto val = parser.release();
         if (auto obj = val.if_object()) {
@@ -470,20 +452,33 @@ void FactoryEditor::parse_program() {
                                 if (auto name = name_val->if_string()) {
                                     result.name = *name;
                                 } else {
-                                    errors.insert({1, "Machine names must be strings"});
+                                    logs.emplace_back(LogMessage{
+                                        LogMessage::Severity::Error,
+                                        "JSON loading error: Machine names must be strings"});
+                                    had_errors = true;
                                 }
                             } else {
-                                errors.insert({1, "Machines must have a \"name\" value"});
+                                logs.emplace_back(LogMessage{
+                                    LogMessage::Severity::Error,
+                                    "JSON loading error: Machines must have a \"name\" value"});
+                                had_errors = true;
                             }
 
                             if (auto time_val = machine->if_contains("time")) {
                                 if (auto time = time_val->if_int64()) {
                                     result.op_time = util::ticks(*time);
                                 } else {
-                                    errors.insert({1, "Machine operation times must be integers"});
+                                    logs.emplace_back(
+                                        LogMessage{LogMessage::Severity::Error,
+                                                   "JSON loading error: Machine operation times "
+                                                   "must be integers"});
+                                    had_errors = true;
                                 }
                             } else {
-                                errors.insert({1, "Machines must have a \"time\" value"});
+                                logs.emplace_back(LogMessage{
+                                    LogMessage::Severity::Error,
+                                    "JSON loading error: Machines must have a \"time\" value"});
+                                had_errors = true;
                             }
 
                             if (auto inputs_val = machine->if_contains("inputs")) {
@@ -495,14 +490,24 @@ void FactoryEditor::parse_program() {
                                                 ItemStream{std::string(input_item.data()),
                                                            static_cast<int>(*quantity)});
                                         } else {
-                                            errors.insert({1, "Input quantities must be integers"});
+                                            logs.emplace_back(
+                                                LogMessage{LogMessage::Severity::Error,
+                                                           "JSON loading error: Input quantities "
+                                                           "must be integers"});
+                                            had_errors = true;
                                         }
                                     }
                                 } else {
-                                    errors.insert({1, "Machine inputs must be objects"});
+                                    logs.emplace_back(LogMessage{
+                                        LogMessage::Severity::Error,
+                                        "JSON loading error: Machine inputs must be objects"});
+                                    had_errors = true;
                                 }
                             } else {
-                                errors.insert({1, "Machines must have an \"inputs\" value"});
+                                logs.emplace_back(LogMessage{
+                                    LogMessage::Severity::Error,
+                                    "JSON loading error: Machines must have an \"inputs\" value"});
+                                had_errors = true;
                             }
 
                             if (auto outputs_val = machine->if_contains("outputs")) {
@@ -514,45 +519,66 @@ void FactoryEditor::parse_program() {
                                                 ItemStream{std::string(output_item.data()),
                                                            static_cast<int>(*quantity)});
                                         } else {
-                                            errors.insert(
-                                                {1, "Output quantities must be integers"});
+                                            logs.emplace_back(
+                                                LogMessage{LogMessage::Severity::Error,
+                                                           "JSON loading error: Output quantities "
+                                                           "must be integers"});
+                                            had_errors = true;
                                         }
                                     }
                                 } else {
-                                    errors.insert({1, "Machine outputs must be objects"});
+                                    logs.emplace_back(LogMessage{
+                                        LogMessage::Severity::Error,
+                                        "JSON loading error: Machine outputs must be objects"});
+                                    had_errors = true;
                                 }
                             } else {
-                                errors.insert({1, "Machines must have an \"outputs\" value"});
+                                logs.emplace_back(LogMessage{
+                                    LogMessage::Severity::Error,
+                                    "JSON loading error: Machines must have an \"outputs\" value"});
+                                had_errors = true;
                             }
 
                             parsed_machines.emplace_back(result);
                         } else {
-                            errors.insert({1, "Machines must be JSON objects"});
+                            logs.emplace_back(
+                                LogMessage{LogMessage::Severity::Error,
+                                           "JSON loading error: Machines must be JSON objects"});
+                            had_errors = true;
                         }
                     }
                 } else {
-                    errors.insert({1, "\"machines\" must be an array"});
+                    logs.emplace_back(
+                        LogMessage{LogMessage::Severity::Error,
+                                   "JSON loading error: \"machines\" must be an array"});
+                    had_errors = true;
                 }
             }
             if (auto ticks_val = obj->if_contains("simulate")) {
                 if (auto ticks = ticks_val->if_int64()) {
                     ticks_to_simulate = *ticks;
                 } else {
-                    errors.insert({1, "\"simulate\" value must be an integer"});
+                    logs.emplace_back(
+                        LogMessage{LogMessage::Severity::Error,
+                                   "JSON loading error: \"simulate\" value must be an integer"});
+                    had_errors = true;
                 }
+            } else {
+                logs.emplace_back(LogMessage{LogMessage::Severity::Warning,
+                                             "JSON loading warning: \"simulate\" value not "
+                                             "present, using the default value of 6000 ticks"});
             }
         } else {
-            errors.insert({1, "Program must start with a JSON object"});
+            logs.emplace_back(
+                LogMessage{LogMessage::Severity::Error,
+                           "JSON loading error: Program must start with a JSON object"});
+            had_errors = true;
         }
     }
 
-    program_editor.SetErrorMarkers(errors);
-
-    if (errors.empty()) {
+    if (!had_errors) {
         factory = Factory{std::move(parsed_items), std::move(parsed_machines)};
         cache.factory_cache = factory.generate_cache(ticks_to_simulate);
-        cache.is_dirty = false;
-        program_changed_this_frame = true;
     }
 }
 
