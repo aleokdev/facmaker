@@ -4,6 +4,7 @@
 #include <boost/json.hpp>
 #include <fmt/core.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <imnodes.h>
 #include <implot.h>
 #include <iostream>
@@ -145,14 +146,17 @@ void draw_factory_inputs(const Factory::Cache& cache,
 using MachineIoUidMapT = std::vector<int>;
 using FactoryIoUidMapT = std::vector<MachineIoUidMapT>;
 
-void draw_factory_machines(const Factory& factory,
-                           int* next_uid,
-                           FactoryIoUidMapT& factory_input_uids,
-                           FactoryIoUidMapT& factory_output_uids) {
+Factory::MachinesT::const_iterator draw_factory_machines(const Factory& factory,
+                                                         int* next_uid,
+                                                         FactoryIoUidMapT& factory_input_uids,
+                                                         FactoryIoUidMapT& factory_output_uids) {
+    auto to_delete = factory.machines.end();
+
     factory_input_uids.resize(factory.machines.size());
     factory_output_uids.resize(factory.machines.size());
     for (std::size_t machine_i = 0; machine_i < factory.machines.size(); machine_i++) {
         auto& machine = factory.machines[machine_i];
+        auto node_id = *next_uid;
 
         imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar,
                                 0xff + ((*next_uid * 50) % 0xFF << 8) |
@@ -163,7 +167,14 @@ void draw_factory_machines(const Factory& factory,
                                      ImVec2{0, static_cast<float>(*next_uid - 1) * 50.f});
 
         imnodes::BeginNodeTitleBar();
+        if (ImGui::CloseButton(ImGui::GetID("delete"),
+                               ImVec2{ImGui::GetCursorPosX() + 3, ImGui::GetCursorPosY() + 26})) {
+            to_delete = factory.machines.begin() + machine_i;
+        }
+        ImGui::Dummy(ImVec2{10, 0});
+        ImGui::SameLine();
         ImGui::TextUnformatted(machine.name.c_str());
+        ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x);
         imnodes::EndNodeTitleBar();
 
         for (auto& input : machine.inputs) {
@@ -187,6 +198,8 @@ void draw_factory_machines(const Factory& factory,
 
         imnodes::PopColorStyle();
     }
+
+    return to_delete;
 }
 
 void draw_factory_outputs(const Factory& factory,
@@ -367,7 +380,9 @@ void FactoryEditor::update_processing_graph() {
     int next_uid = 1;
 
     draw_factory_inputs(cache.factory_cache, &next_uid, item_uids);
-    draw_factory_machines(factory, &next_uid, factory_input_uids, factory_output_uids);
+    auto machine_to_erase =
+        draw_factory_machines(factory, &next_uid, factory_input_uids, factory_output_uids);
+
     draw_factory_outputs(factory, cache.factory_cache, &next_uid, item_uids);
     draw_factory_links(factory, cache.factory_cache, &next_uid, factory_input_uids,
                        factory_output_uids, item_uids);
@@ -377,6 +392,11 @@ void FactoryEditor::update_processing_graph() {
             new_machine.reset();
             cache.factory_cache = factory.generate_cache(cache.factory_cache.ticks_simulated());
         }
+    }
+
+    if (machine_to_erase != factory.machines.end()) {
+        factory.machines.erase(machine_to_erase);
+        cache.factory_cache = factory.generate_cache(cache.factory_cache.ticks_simulated());
     }
 
     imnodes::EndNodeEditor();
