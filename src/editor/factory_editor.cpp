@@ -169,7 +169,7 @@ Factory::MachinesT::const_iterator draw_factory_machines(const Factory& factory,
 
         imnodes::BeginNodeTitleBar();
         if (ImGui::CloseButton(ImGui::GetID("delete"),
-                               ImVec2{ImGui::GetCursorPosX() + 3, ImGui::GetCursorPosY() + 26})) {
+                               ImVec2{ImGui::GetCursorPosX() + 3, ImGui::GetCursorPosY() + 45})) {
             to_delete = factory.machines.begin() + machine_i;
         }
         ImGui::Dummy(ImVec2{10, 0});
@@ -378,7 +378,15 @@ void FactoryEditor::update_processing_graph() {
     static std::optional<ImVec2> editor_node_start_pos;
 
     ImGui::SetNextWindowSize(ImVec2{500, 500}, ImGuiCond_Appearing);
-    ImGui::Begin("Factory Displayer");
+    ImGui::Begin("Factory Displayer", nullptr, ImGuiWindowFlags_MenuBar);
+
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::Selectable("Import From Clipboard")) {
+            auto input = std::istringstream(ImGui::GetClipboardText());
+            parse_factory_json(input);
+        }
+        ImGui::EndMenuBar();
+    }
 
     imnodes::BeginNodeEditor();
     ImVec2 editor_pos = ImGui::GetCursorScreenPos();
