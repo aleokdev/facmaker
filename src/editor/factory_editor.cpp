@@ -8,6 +8,7 @@
 #include <imnodes.h>
 #include <implot.h>
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -267,15 +268,21 @@ void draw_factory_links(const Factory& factory,
     }
 }
 
-bool draw_machine_editor(const Factory& factory, PositionedMachine& m, int* next_uid) {
+bool draw_machine_editor(const Factory& factory,
+                         Machine& machine,
+                         int* next_uid,
+                         std::optional<ImVec2> node_pos = std::nullopt) {
+    auto node_id = *next_uid;
+
     imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar, 0xff + ((*next_uid * 50) % 0xFF << 8) |
                                                               ((*next_uid * 186) % 0xFF << 16) |
                                                               ((*next_uid * 67) % 0xFF << 24));
     imnodes::BeginNode((*next_uid)++);
-    imnodes::SetNodeGridSpacePos(*next_uid - 1, m.position);
+    if (node_pos.has_value())
+        imnodes::SetNodeGridSpacePos(*next_uid - 1, *node_pos);
 
     imnodes::BeginNodeTitleBar();
-    ImGui::SelectableInput("##name", false, m.machine.name.data(), m.machine.name.capacity());
+    ImGui::SelectableInput("##name", false, machine.name.data(), machine.name.capacity());
     imnodes::EndNodeTitleBar();
 
     const auto& draw_io_manip = [&factory](ItemStream& obj) -> bool {
@@ -302,21 +309,21 @@ bool draw_machine_editor(const Factory& factory, PositionedMachine& m, int* next
         return ImGui::SmallButton("-##rm_io");
     };
 
-    m.machine.inputs.erase(
-        std::remove_if(m.machine.inputs.begin(), m.machine.inputs.end(),
+    machine.inputs.erase(
+        std::remove_if(machine.inputs.begin(), machine.inputs.end(),
                        [&factory, &draw_io_manip, next_uid](ItemStream& input) -> bool {
                            imnodes::BeginInputAttribute((*next_uid)++);
                            bool remove = draw_io_manip(input);
                            imnodes::EndInputAttribute();
                            return remove;
                        }),
-        m.machine.inputs.end());
+        machine.inputs.end());
     if (ImGui::SmallButton("+##add_input")) {
-        m.machine.inputs.emplace_back(ItemStream{factory.items.begin()->first, 1});
+        machine.inputs.emplace_back(ItemStream{factory.items.begin()->first, 1});
     }
 
-    m.machine.outputs.erase(
-        std::remove_if(m.machine.outputs.begin(), m.machine.outputs.end(),
+    machine.outputs.erase(
+        std::remove_if(machine.outputs.begin(), machine.outputs.end(),
                        [&factory, &draw_io_manip, next_uid](ItemStream& output) -> bool {
                            imnodes::BeginOutputAttribute((*next_uid)++);
                            ImGui::Indent(40);
@@ -325,18 +332,18 @@ bool draw_machine_editor(const Factory& factory, PositionedMachine& m, int* next
                            imnodes::EndOutputAttribute();
                            return remove;
                        }),
-        m.machine.outputs.end());
+        machine.outputs.end());
 
     ImGui::Indent(40);
     if (ImGui::SmallButton("+##add_output")) {
-        m.machine.outputs.emplace_back(ItemStream{factory.items.begin()->first, 1});
+        machine.outputs.emplace_back(ItemStream{factory.items.begin()->first, 1});
     }
     ImGui::Unindent();
 
     ImGui::SetNextItemWidth(50);
-    int op_time = m.machine.op_time.count();
+    int op_time = machine.op_time.count();
     ImGui::DragInt("##tpop", &op_time, 1.f, 1, 99999);
-    m.machine.op_time = util::ticks(op_time);
+    machine.op_time = util::ticks(op_time);
     ImGui::SameLine();
     ImGui::TextDisabled("t/op");
 
@@ -368,6 +375,8 @@ void FactoryEditor::draw() {
 }
 
 void FactoryEditor::update_processing_graph() {
+    static std::optional<ImVec2> editor_node_start_pos;
+
     ImGui::SetNextWindowSize(ImVec2{500, 500}, ImGuiCond_Appearing);
     ImGui::Begin("Factory Displayer");
 
@@ -387,11 +396,12 @@ void FactoryEditor::update_processing_graph() {
     draw_factory_links(factory, cache.factory_cache, &next_uid, factory_input_uids,
                        factory_output_uids, item_uids);
     if (new_machine) {
-        if (draw_machine_editor(factory, *new_machine, &next_uid)) {
-            factory.machines.emplace_back(std::move(new_machine->machine));
+        if (draw_machine_editor(factory, *new_machine, &next_uid, editor_node_start_pos)) {
+            factory.machines.emplace_back(std::move(*new_machine));
             new_machine.reset();
             cache.factory_cache = factory.generate_cache(cache.factory_cache.ticks_simulated());
         }
+        editor_node_start_pos.reset();
     }
 
     if (machine_to_erase != factory.machines.end()) {
@@ -405,11 +415,13 @@ void FactoryEditor::update_processing_graph() {
         if (ImGui::MenuItem("New Machine")) {
             std::string new_machine_name = "Machine";
             new_machine_name.reserve(32);
-            new_machine.emplace(PositionedMachine{
-                {std::move(new_machine_name)},
-                ImVec2{ImGui::GetMousePos().x - editor_pos.x - imnodes::EditorContextGetPanning().x,
-                       ImGui::GetMousePos().y - editor_pos.y -
-                           imnodes::EditorContextGetPanning().y}});
+            new_machine.emplace(Machine{
+                std::move(new_machine_name),
+            });
+
+            editor_node_start_pos = ImVec2{
+                ImGui::GetMousePos().x - editor_pos.x - imnodes::EditorContextGetPanning().x,
+                ImGui::GetMousePos().y - editor_pos.y - imnodes::EditorContextGetPanning().y};
         }
         ImGui::EndPopup();
     }

@@ -13,11 +13,6 @@ struct EditorContext;
 }
 namespace fmk {
 
-struct PositionedMachine {
-    Machine machine;
-    ImVec2 position;
-};
-
 class FactoryEditor {
 public:
     FactoryEditor();
@@ -43,7 +38,7 @@ private:
     Factory factory;
     std::vector<LogMessage> logs;
     imnodes::EditorContext* imnodes_ctx;
-    std::optional<PositionedMachine> new_machine;
+    std::optional<Machine> new_machine;
 };
 
 } // namespace fmk
