@@ -91,8 +91,6 @@ void FactoryEditor::draw() {
 }
 
 void FactoryEditor::update_processing_graph() {
-    static std::optional<ImVec2> editor_node_start_pos;
-
     ImGui::SetNextWindowSize(ImVec2{500, 500}, ImGuiCond_Appearing);
     ImGui::Begin("Factory Displayer", nullptr, ImGuiWindowFlags_MenuBar);
 
@@ -107,6 +105,7 @@ void FactoryEditor::update_processing_graph() {
     imnodes::BeginNodeEditor();
     ImVec2 editor_pos = ImGui::GetCursorScreenPos();
 
+    static std::optional<ImVec2> editor_node_start_pos;
     FactoryIoUidMapT factory_input_uids;
     FactoryIoUidMapT factory_output_uids;
     std::unordered_map<Item::NameT, int> item_uids;
