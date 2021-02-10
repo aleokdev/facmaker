@@ -64,8 +64,6 @@ void draw_factory_inputs(const Factory& _factory,
                                     ((*next_uid * 186) % 0xFF << 16) |
                                     ((*next_uid * 67) % 0xFF << 24));
         imnodes::BeginNode((*next_uid)++);
-        imnodes::SetNodeGridSpacePos(*next_uid - 1,
-                                     ImVec2{0, static_cast<float>(*next_uid - 1) * 50.f});
 
         imnodes::BeginNodeTitleBar();
         ImGui::TextUnformatted("Input");
@@ -102,8 +100,6 @@ void draw_factory_machines(const Factory& factory,
                                     ((*next_uid * 186) % 0xFF << 16) |
                                     ((*next_uid * 67) % 0xFF << 24));
         imnodes::BeginNode((*next_uid)++);
-        imnodes::SetNodeGridSpacePos(*next_uid - 1,
-                                     ImVec2{0, static_cast<float>(*next_uid - 1) * 50.f});
 
         imnodes::BeginNodeTitleBar();
         if (ImGui::CloseButton(ImGui::GetID("delete"),
@@ -149,8 +145,6 @@ void draw_factory_outputs(const Factory& factory,
                                     ((*next_uid * 186) % 0xFF << 16) |
                                     ((*next_uid * 67) % 0xFF << 24));
         imnodes::BeginNode((*next_uid)++);
-        imnodes::SetNodeGridSpacePos(*next_uid - 1,
-                                     ImVec2{0, static_cast<float>(*next_uid - 1) * 50.f});
 
         imnodes::BeginNodeTitleBar();
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));

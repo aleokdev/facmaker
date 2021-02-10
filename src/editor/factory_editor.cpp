@@ -123,12 +123,13 @@ void FactoryEditor::update_processing_graph() {
         if (draw_machine_editor(factory, *new_machine, &next_uid, editor_node_start_pos)) {
             factory.machines.emplace_back(std::move(*new_machine));
             new_machine.reset();
-            cache.factory_cache = factory.generate_cache(cache.factory_cache.ticks_simulated());
+            regenerate_cache();
         }
         editor_node_start_pos.reset();
     } else if (machine_to_erase != factory.machines.end()) {
         factory.machines.erase(machine_to_erase);
-        cache.factory_cache = factory.generate_cache(cache.factory_cache.ticks_simulated());
+
+        regenerate_cache();
     }
 
     imnodes::EndNodeEditor();
@@ -157,6 +158,10 @@ void FactoryEditor::update_item_displayer() {
         draw_item_graph(factory, cache.factory_cache, item_name, true);
     }
     ImGui::End();
+}
+
+void FactoryEditor::regenerate_cache() {
+    cache.factory_cache = factory.generate_cache(cache.factory_cache.ticks_simulated());
 }
 
 void FactoryEditor::parse_factory_json(std::istream& input) {
@@ -332,7 +337,7 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
 
     if (!had_errors) {
         factory = Factory{std::move(parsed_items), std::move(parsed_machines)};
-        cache.factory_cache = factory.generate_cache(ticks_to_simulate);
+        regenerate_cache();
     }
 }
 

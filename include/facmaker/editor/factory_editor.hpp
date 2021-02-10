@@ -24,10 +24,10 @@ private:
     void update_processing_graph();
     void update_item_displayer();
     void parse_factory_json(std::istream& input);
+    void regenerate_cache();
 
     struct Cache {
         Factory::Cache factory_cache;
-        std::vector<ImVec2> machine_positions;
     } cache;
 
     struct LogMessage {
