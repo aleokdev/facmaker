@@ -110,17 +110,17 @@ void FactoryEditor::update_processing_graph() {
     FactoryIoUidMapT factory_output_uids;
     std::unordered_map<Item::NameT, int> item_uids;
     Factory::MachinesT::const_iterator machine_to_erase = factory.machines.end();
-    int next_uid = 1;
+    int last_output_id;
 
-    draw_factory_inputs(factory, cache.factory_cache, &next_uid, item_uids);
-    draw_factory_machines(factory, cache.factory_cache, &next_uid, factory_input_uids,
-                          factory_output_uids, machine_to_erase);
-    draw_factory_outputs(factory, cache.factory_cache, &next_uid, item_uids);
-    draw_factory_links(factory, cache.factory_cache, &next_uid, factory_input_uids,
+    draw_factory_inputs(factory, cache.factory_cache, item_uids);
+    draw_factory_machines(factory, cache.factory_cache, factory_input_uids, factory_output_uids,
+                          machine_to_erase);
+    draw_factory_outputs(factory, cache.factory_cache, item_uids, &last_output_id);
+    draw_factory_links(factory, cache.factory_cache, &last_output_id, factory_input_uids,
                        factory_output_uids, item_uids);
 
     if (new_machine) {
-        if (draw_machine_editor(factory, *new_machine, &next_uid, editor_node_start_pos)) {
+        if (draw_machine_editor(factory, *new_machine, &last_output_id, editor_node_start_pos)) {
             factory.machines.emplace_back(std::move(*new_machine));
             new_machine.reset();
             regenerate_cache();
@@ -133,6 +133,40 @@ void FactoryEditor::update_processing_graph() {
     }
 
     imnodes::EndNodeEditor();
+
+    if (int start_attr; imnodes::IsLinkDropped(&start_attr)) {
+        [&]() {
+            for (std::size_t machine_i = 0; machine_i < factory_input_uids.size(); machine_i++) {
+                const auto& machine_uids = factory_input_uids[machine_i];
+
+                for (std::size_t input_i = 0; input_i < machine_uids.size(); input_i++) {
+                    if (start_attr == machine_uids[input_i]) {
+                        // Convert this machine's input item into an input!
+                        factory.items[factory.machines[machine_i].inputs[input_i].item].type =
+                            Item::NodeType::Input;
+
+                        regenerate_cache();
+                        return;
+                    }
+                }
+            }
+
+            for (std::size_t machine_i = 0; machine_i < factory_output_uids.size(); machine_i++) {
+                const auto& machine_uids = factory_output_uids[machine_i];
+
+                for (std::size_t output_i = 0; output_i < machine_uids.size(); output_i++) {
+                    if (start_attr == machine_uids[output_i]) {
+                        // Convert this machine's output item into an output!
+                        factory.items[factory.machines[machine_i].outputs[output_i].item].type =
+                            Item::NodeType::Output;
+
+                        regenerate_cache();
+                        return;
+                    }
+                }
+            }
+        }();
+    }
 
     if (ImGui::BeginPopupContextItem("_ngc")) {
         if (ImGui::MenuItem("New Machine")) {
@@ -147,6 +181,18 @@ void FactoryEditor::update_processing_graph() {
                 ImGui::GetMousePos().y - editor_pos.y - imnodes::EditorContextGetPanning().y};
         }
         ImGui::EndPopup();
+    }
+
+    if (ImGui::Begin("Factory Debug")) {
+        ImGui::Text("Inputs");
+        for (const auto& input : cache.factory_cache.inputs()) {
+            ImGui::TextDisabled("%s", input.c_str());
+        }
+        ImGui::Text("Outputs");
+        for (const auto& output : cache.factory_cache.outputs()) {
+            ImGui::TextDisabled("%s", output.c_str());
+        }
+        ImGui::End();
     }
 
     ImGui::End();
