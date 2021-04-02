@@ -10,46 +10,16 @@
 
 #include "editor/factory_editor.hpp"
 
-constexpr const char* glsl_version = "#version 450 core";
+#include <iostream>
+
+bool init_graphics(GLFWwindow** out_window);
 
 int main() {
-    if (!glfwInit()) {
+    GLFWwindow* window;
+    if (!init_graphics(&window)) {
+        std::cout << "Couldn't initialize graphics." << std::endl;
         return -1;
     }
-
-    int window_x = 0, window_y = 0;
-#ifndef NDEBUG
-    {
-        int monitor_count;
-        auto monitors = glfwGetMonitors(&monitor_count);
-        if (monitor_count > 0) {
-            glfwGetMonitorPos(monitors[1], &window_x, &window_x);
-        }
-    }
-#endif
-    GLFWwindow* window = glfwCreateWindow(1020, 720, "facmaker", NULL, NULL);
-    if (!window) {
-        return -1;
-    }
-    glfwSetWindowPos(window, window_x, window_y);
-
-    glfwMakeContextCurrent(window);
-    gladLoadGLLoader((GLADloadproc)&glfwGetProcAddress);
-
-    // Setup ImGui context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImPlot::CreateContext();
-
-    // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init(glsl_version);
-    imnodes::Initialize();
-
-    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-    // Setup ImGui style
-    ImGui::StyleColorsDark();
 
     fmk::FactoryEditor editor;
 
@@ -87,4 +57,52 @@ int main() {
     glfwTerminate();
     imnodes::Shutdown();
     return 0;
+}
+
+bool init_graphics(GLFWwindow** out_window) {
+    constexpr const char* glsl_version = "#version 450 core";
+
+    if (!glfwInit()) {
+        return false;
+    }
+
+    int window_x = 0, window_y = 0;
+    const int window_w = 1020, window_h = 720;
+#ifndef NDEBUG
+    {
+        int monitor_count;
+        auto monitors = glfwGetMonitors(&monitor_count);
+        if (monitor_count > 1) {
+            int xpos, ypos, width, height;
+            glfwGetMonitorWorkarea(monitors[1], &xpos, &ypos, &width, &height);
+            window_x = xpos + width / 2 - window_w / 2;
+            window_y = ypos + height / 2 - window_h / 2;
+        }
+    }
+#endif
+    *out_window = glfwCreateWindow(window_w, window_h, "facmaker", NULL, NULL);
+    if (!*out_window) {
+        return false;
+    }
+    glfwSetWindowPos(*out_window, window_x, window_y);
+
+    glfwMakeContextCurrent(*out_window);
+    gladLoadGLLoader((GLADloadproc)&glfwGetProcAddress);
+
+    // Setup ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImPlot::CreateContext();
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(*out_window, true);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+    imnodes::Initialize();
+
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+    // Setup ImGui style
+    ImGui::StyleColorsDark();
+
+    return true;
 }
