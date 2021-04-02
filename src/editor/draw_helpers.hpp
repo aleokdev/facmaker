@@ -1,5 +1,6 @@
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <imnodes.h>
 #include <implot.h>
 
 #include "factory.hpp"
@@ -7,11 +8,11 @@
 
 namespace fmk {
 
-void draw_item_graph(const Factory& factory,
-                     const Factory::Cache& cache,
-                     Item::NameT item_name,
-                     bool expanded = true,
-                     bool reload_plot_limits = false) {
+inline void draw_item_graph(const Factory& factory,
+                            const Factory::Cache& cache,
+                            Item::NameT item_name,
+                            bool expanded = true,
+                            bool reload_plot_limits = false) {
     auto& item = factory.items.at(item_name);
     auto& plot = cache.plots().at(item_name);
 
@@ -54,23 +55,23 @@ void draw_item_graph(const Factory& factory,
     ImPlot::PopStyleColor();
 }
 
-void draw_factory_inputs(const Factory& _factory,
-                         const Factory::Cache& cache,
-                         int* next_uid,
-                         std::unordered_map<Item::NameT, int>& item_uids) {
+inline void draw_factory_inputs(const Factory& _factory,
+                                const Factory::Cache& cache,
+                                std::unordered_map<Item::NameT, int>& item_uids) {
+    int next_uid = 1;
+
     for (auto& input : cache.inputs()) {
-        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar,
-                                0xff + ((*next_uid * 50) % 0xFF << 8) |
-                                    ((*next_uid * 186) % 0xFF << 16) |
-                                    ((*next_uid * 67) % 0xFF << 24));
-        imnodes::BeginNode((*next_uid)++);
+        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar, 0xff + ((next_uid * 50) % 0xFF << 8) |
+                                                                  ((next_uid * 186) % 0xFF << 16) |
+                                                                  ((next_uid * 67) % 0xFF << 24));
+        imnodes::BeginNode(next_uid++);
 
         imnodes::BeginNodeTitleBar();
         ImGui::TextUnformatted("Input");
         imnodes::EndNodeTitleBar();
 
-        item_uids[std::string(input)] = *next_uid;
-        imnodes::BeginOutputAttribute((*next_uid)++);
+        item_uids[std::string(input)] = next_uid;
+        imnodes::BeginOutputAttribute(next_uid++);
         ImGui::Text("%s", input.c_str());
         imnodes::EndOutputAttribute();
 
@@ -83,23 +84,22 @@ void draw_factory_inputs(const Factory& _factory,
 using MachineIoUidMapT = std::vector<int>;
 using FactoryIoUidMapT = std::vector<MachineIoUidMapT>;
 
-void draw_factory_machines(const Factory& factory,
-                           const Factory::Cache& _cache,
-                           int* next_uid,
-                           FactoryIoUidMapT& factory_input_uids,
-                           FactoryIoUidMapT& factory_output_uids,
-                           Factory::MachinesT::const_iterator& out_machine_to_erase) {
+inline void draw_factory_machines(const Factory& factory,
+                                  const Factory::Cache& _cache,
+                                  FactoryIoUidMapT& factory_input_uids,
+                                  FactoryIoUidMapT& factory_output_uids,
+                                  Factory::MachinesT::const_iterator& out_machine_to_erase) {
+    int next_uid = std::numeric_limits<int>::max() / 3;
+
     factory_input_uids.resize(factory.machines.size());
     factory_output_uids.resize(factory.machines.size());
     for (std::size_t machine_i = 0; machine_i < factory.machines.size(); machine_i++) {
         auto& machine = factory.machines[machine_i];
-        auto node_id = *next_uid;
 
-        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar,
-                                0xff + ((*next_uid * 50) % 0xFF << 8) |
-                                    ((*next_uid * 186) % 0xFF << 16) |
-                                    ((*next_uid * 67) % 0xFF << 24));
-        imnodes::BeginNode((*next_uid)++);
+        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar, 0xff + ((next_uid * 50) % 0xFF << 8) |
+                                                                  ((next_uid * 186) % 0xFF << 16) |
+                                                                  ((next_uid * 67) % 0xFF << 24));
+        imnodes::BeginNode(next_uid++);
 
         imnodes::BeginNodeTitleBar();
         if (ImGui::CloseButton(ImGui::GetID("delete"),
@@ -113,15 +113,15 @@ void draw_factory_machines(const Factory& factory,
         imnodes::EndNodeTitleBar();
 
         for (auto& input : machine.inputs) {
-            factory_input_uids[machine_i].emplace_back(*next_uid);
-            imnodes::BeginInputAttribute((*next_uid)++);
+            factory_input_uids[machine_i].emplace_back(next_uid);
+            imnodes::BeginInputAttribute((next_uid)++);
             ImGui::Text("%i %s", input.quantity, input.item.c_str());
             imnodes::EndInputAttribute();
         }
 
         for (auto& output : machine.outputs) {
-            factory_output_uids[machine_i].emplace_back(*next_uid);
-            imnodes::BeginOutputAttribute((*next_uid)++);
+            factory_output_uids[machine_i].emplace_back(next_uid);
+            imnodes::BeginOutputAttribute((next_uid)++);
             ImGui::Indent(40);
             ImGui::Text("%i %s", output.quantity, output.item.c_str());
             imnodes::EndOutputAttribute();
@@ -135,16 +135,18 @@ void draw_factory_machines(const Factory& factory,
     }
 }
 
-void draw_factory_outputs(const Factory& factory,
-                          const Factory::Cache& cache,
-                          int* next_uid,
-                          std::unordered_map<Item::NameT, int>& item_uids) {
+inline void draw_factory_outputs(const Factory& factory,
+                                 const Factory::Cache& cache,
+                                 std::unordered_map<Item::NameT, int>& item_uids,
+                                 int* last_uid) {
+    *last_uid = std::numeric_limits<int>::max() / 3 * 2;
+
     for (auto& output : cache.outputs()) {
         imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar,
-                                0xff + ((*next_uid * 50) % 0xFF << 8) |
-                                    ((*next_uid * 186) % 0xFF << 16) |
-                                    ((*next_uid * 67) % 0xFF << 24));
-        imnodes::BeginNode((*next_uid)++);
+                                0xff + ((*last_uid * 50) % 0xFF << 8) |
+                                    ((*last_uid * 186) % 0xFF << 16) |
+                                    ((*last_uid * 67) % 0xFF << 24));
+        imnodes::BeginNode((*last_uid)++);
 
         imnodes::BeginNodeTitleBar();
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
@@ -157,8 +159,8 @@ void draw_factory_outputs(const Factory& factory,
         ImGui::PopStyleColor();
         imnodes::EndNodeTitleBar();
 
-        item_uids[std::string(output)] = *next_uid;
-        imnodes::BeginInputAttribute((*next_uid)++);
+        item_uids[std::string(output)] = *last_uid;
+        imnodes::BeginInputAttribute((*last_uid)++);
         draw_item_graph(factory, cache, output, expand_graph);
         imnodes::EndInputAttribute();
 
@@ -168,12 +170,12 @@ void draw_factory_outputs(const Factory& factory,
     }
 }
 
-void draw_factory_links(const Factory& factory,
-                        const Factory::Cache& cache,
-                        int* next_uid,
-                        const FactoryIoUidMapT& factory_input_uids,
-                        const FactoryIoUidMapT& factory_output_uids,
-                        std::unordered_map<Item::NameT, int>& item_uids) {
+inline void draw_factory_links(const Factory& factory,
+                               const Factory::Cache& cache,
+                               int* next_uid,
+                               const FactoryIoUidMapT& factory_input_uids,
+                               const FactoryIoUidMapT& factory_output_uids,
+                               std::unordered_map<Item::NameT, int>& item_uids) {
     for (auto& [item_name, node] : cache.item_nodes()) {
         for (auto& input : node.inputs) {
             for (auto& output : node.outputs) {
@@ -198,10 +200,10 @@ void draw_factory_links(const Factory& factory,
     }
 }
 
-bool draw_machine_editor(const Factory& factory,
-                         Machine& machine,
-                         int* next_uid,
-                         std::optional<ImVec2> node_pos = std::nullopt) {
+inline bool draw_machine_editor(const Factory& factory,
+                                Machine& machine,
+                                int* next_uid,
+                                std::optional<ImVec2> node_pos = std::nullopt) {
     auto node_id = *next_uid;
 
     imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar, 0xff + ((*next_uid * 50) % 0xFF << 8) |
