@@ -68,7 +68,7 @@ constexpr std::string_view starting_program = R"({
         "Iron Ingot": 0,
         "Test": 0
     },
-    "simulate": 10
+    "simulate": 1000
 }
 )";
 
@@ -95,9 +95,14 @@ void FactoryEditor::update_processing_graph() {
     ImGui::Begin("Factory Displayer", nullptr, ImGuiWindowFlags_MenuBar);
 
     if (ImGui::BeginMenuBar()) {
-        if (ImGui::Selectable("Import From Clipboard")) {
+        if (ImGui::MenuItem("Import From Clipboard")) {
             auto input = std::istringstream(ImGui::GetClipboardText());
             parse_factory_json(input);
+        }
+        if (ImGui::MenuItem("Export To Clipboard")) {
+            auto output = std::ostringstream();
+            output_factory_json(output);
+            ImGui::SetClipboardText(output.str().c_str());
         }
         ImGui::EndMenuBar();
     }
@@ -385,6 +390,82 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
         factory = Factory{std::move(parsed_items), std::move(parsed_machines)};
         regenerate_cache();
     }
+}
+
+void FactoryEditor::output_factory_json(std::ostream& out) {
+    out << "{";
+
+    // Inputs
+    {
+        out << "\"inputs\":{";
+        const auto& inputs = cache.factory_cache.inputs();
+        for (std::size_t i = 0; i < inputs.size(); i++) {
+            out << "\"" << inputs[i] << "\":0";
+            if (i < inputs.size() - 1) {
+                out << ",";
+            }
+        }
+        out << "},";
+    }
+
+    // Machines
+    {
+        out << "\"machines\":[";
+        const auto& machines = factory.machines;
+        for (std::size_t i = 0; i < machines.size(); i++) {
+            out << "{";
+            {
+                const auto& machine = machines[i];
+                out << "\"name\":\"" << machine.name << "\",";
+                out << "\"inputs\":{";
+                {
+                    const auto& inputs = machine.inputs;
+                    for (std::size_t i = 0; i < inputs.size(); i++) {
+                        out << "\"" << inputs[i].item << "\":" << inputs[i].quantity;
+                        if (i < inputs.size() - 1) {
+                            out << ",";
+                        }
+                    }
+                }
+                out << "},";
+                out << "\"outputs\":{";
+                {
+                    const auto& outputs = machine.outputs;
+                    for (std::size_t i = 0; i < outputs.size(); i++) {
+                        out << "\"" << outputs[i].item << "\":" << outputs[i].quantity;
+                        if (i < outputs.size() - 1) {
+                            out << ",";
+                        }
+                    }
+                }
+                out << "},";
+                out << "\"time\":" << machine.op_time.count();
+            }
+            out << "}";
+            if (i < machines.size() - 1) {
+                out << ",";
+            }
+        }
+        out << "],";
+    }
+
+    // Outputs
+    {
+        out << "\"outputs\":{";
+        const auto& outputs = cache.factory_cache.outputs();
+        for (std::size_t i = 0; i < outputs.size(); i++) {
+            out << "\"" << outputs[i] << "\":0";
+            if (i < outputs.size() - 1) {
+                out << ",";
+            }
+        }
+        out << "},";
+    }
+
+    // Simulate value
+    { out << "\"simulate\":" << cache.factory_cache.ticks_simulated(); }
+
+    out << "}";
 }
 
 } // namespace fmk

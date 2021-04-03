@@ -23,7 +23,10 @@ public:
 private:
     void update_processing_graph();
     void update_item_displayer();
+
     void parse_factory_json(std::istream& input);
+    void output_factory_json(std::ostream& output);
+
     void regenerate_cache();
 
     struct Cache {
