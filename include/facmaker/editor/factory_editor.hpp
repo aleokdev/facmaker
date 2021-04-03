@@ -39,7 +39,6 @@ private:
     };
 
     Factory factory;
-    std::vector<LogMessage> logs;
     imnodes::EditorContext* imnodes_ctx;
     std::optional<Machine> new_machine;
 };

@@ -7,6 +7,10 @@
 #include <imgui.h>
 #include <imnodes.h>
 #include <implot.h>
+#include <plog/Appenders/ColorConsoleAppender.h>
+#include <plog/Formatters/TxtFormatter.h>
+#include <plog/Init.h>
+#include <plog/Log.h>
 
 #include "editor/factory_editor.hpp"
 
@@ -15,9 +19,12 @@
 bool init_graphics(GLFWwindow** out_window);
 
 int main() {
+    static plog::ColorConsoleAppender<plog::TxtFormatter> console_appender;
+    plog::init(plog::verbose, &console_appender);
+
     GLFWwindow* window;
     if (!init_graphics(&window)) {
-        std::cout << "Couldn't initialize graphics." << std::endl;
+        PLOG_ERROR << "Couldn't initialize graphics.";
         return -1;
     }
 

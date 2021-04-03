@@ -19,3 +19,6 @@
 [submodule "ext/fmt"]
 	path = ext/fmt
 	url = https://github.com/fmtlib/fmt
+[submodule "ext/plog"]
+	path = ext/plog
+	url = https://github.com/SergiusTheBest/plog
