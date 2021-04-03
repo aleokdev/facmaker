@@ -18,6 +18,8 @@
 
 bool init_graphics(GLFWwindow** out_window);
 
+static imnodes::Context* imnodes_context;
+
 int main() {
     static plog::ColorConsoleAppender<plog::TxtFormatter> console_appender;
     plog::init(plog::verbose, &console_appender);
@@ -62,7 +64,7 @@ int main() {
 
     glfwDestroyWindow(window);
     glfwTerminate();
-    imnodes::Shutdown();
+    imnodes::DestroyContext(imnodes_context);
     return 0;
 }
 
@@ -104,7 +106,7 @@ bool init_graphics(GLFWwindow** out_window) {
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(*out_window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
-    imnodes::Initialize();
+    imnodes_context = imnodes::CreateContext();
 
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
