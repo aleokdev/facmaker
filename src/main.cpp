@@ -26,7 +26,7 @@ int main() {
 
     GLFWwindow* window;
     if (!init_graphics(&window)) {
-        PLOG_ERROR << "Couldn't initialize graphics.";
+        PLOG_FATAL << "Couldn't initialize graphics.";
         return -1;
     }
 
@@ -41,8 +41,6 @@ int main() {
 
         ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
 
-        ImGui::ShowDemoWindow();
-        ImPlot::ShowDemoWindow();
         editor.draw();
 
         ImGui::Render();

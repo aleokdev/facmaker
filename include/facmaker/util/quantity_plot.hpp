@@ -9,7 +9,7 @@ public:
     using ContainerT = std::vector<int>;
 
     QuantityPlot();
-    QuantityPlot(std::size_t capacity);
+    explicit QuantityPlot(std::size_t capacity);
     QuantityPlot(std::size_t capacity, int starting_val);
 
     /// Changes a value in the plot by a modifier.

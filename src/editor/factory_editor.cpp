@@ -88,7 +88,7 @@ FactoryEditor::~FactoryEditor() { imnodes::EditorContextFree(imnodes_ctx); }
 
 void FactoryEditor::draw() {
     update_processing_graph();
-    update_item_displayer();
+    update_item_statistics();
 }
 
 void FactoryEditor::update_processing_graph() {
@@ -107,7 +107,19 @@ void FactoryEditor::update_processing_graph() {
             ImGui::SetClipboardText(output.str().c_str());
             PLOGD << "Exported to clipboard";
         }
+        if (ImGui::BeginMenu("Debug")) {
+            ImGui::MenuItem("Show ImGui Demo Window", nullptr, &show_imgui_demo_window);
+            ImGui::MenuItem("Show ImPlot Demo Window", nullptr, &show_implot_demo_window);
+            ImGui::EndMenu();
+        }
         ImGui::EndMenuBar();
+    }
+
+    if (show_imgui_demo_window) {
+        ImGui::ShowDemoWindow(&show_imgui_demo_window);
+    }
+    if (show_implot_demo_window) {
+        ImPlot::ShowDemoWindow(&show_implot_demo_window);
     }
 
     imnodes::BeginNodeEditor();
@@ -117,7 +129,7 @@ void FactoryEditor::update_processing_graph() {
     FactoryIoUidMapT factory_input_uids;
     FactoryIoUidMapT factory_output_uids;
     std::unordered_map<Item::NameT, int> item_uids;
-    Factory::MachinesT::const_iterator machine_to_erase = factory.machines.end();
+    auto machine_to_erase = factory.machines.cend();
     int last_output_id;
 
     draw_factory_inputs(factory, cache.factory_cache, item_uids);
@@ -206,8 +218,8 @@ void FactoryEditor::update_processing_graph() {
     ImGui::End();
 }
 
-void FactoryEditor::update_item_displayer() {
-    ImGui::Begin("Item Displayer");
+void FactoryEditor::update_item_statistics() {
+    ImGui::Begin("Item Statistics");
     for (auto& [item_name, _] : factory.items) {
         draw_item_graph(factory, cache.factory_cache, item_name, true);
     }
@@ -241,15 +253,15 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
         if (auto obj = val.if_object()) {
             if (auto inputs_val = obj->if_contains("inputs")) {
                 if (auto inputs = inputs_val->if_object()) {
-                    for (const auto [input, _] : *inputs) {
-                        parsed_items[std::string(input)].type = Item::NodeType::Input;
+                    for (const auto& [input_name, _] : *inputs) {
+                        parsed_items[std::string(input_name)].type = Item::NodeType::Input;
                     }
                 }
             }
             if (auto outputs_val = obj->if_contains("outputs")) {
                 if (auto outputs = outputs_val->if_object()) {
-                    for (const auto [output, _] : *outputs) {
-                        parsed_items[std::string(output)].type = Item::NodeType::Output;
+                    for (const auto& [output_name, _] : *outputs) {
+                        parsed_items[std::string(output_name)].type = Item::NodeType::Output;
                     }
                 }
             }
@@ -290,7 +302,7 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
 
                             if (auto inputs_val = machine->if_contains("inputs")) {
                                 if (auto inputs = inputs_val->if_object()) {
-                                    for (const auto [input_item, input_qty] : *inputs) {
+                                    for (const auto& [input_item, input_qty] : *inputs) {
                                         if (auto quantity = input_qty.if_int64()) {
                                             parsed_items.insert({std::string(input_item), Item()});
                                             result.inputs.emplace_back(
@@ -315,7 +327,7 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
 
                             if (auto outputs_val = machine->if_contains("outputs")) {
                                 if (auto outputs = outputs_val->if_object()) {
-                                    for (const auto [output_item, output_qty] : *outputs) {
+                                    for (const auto& [output_item, output_qty] : *outputs) {
                                         if (auto quantity = output_qty.if_int64()) {
                                             parsed_items.insert({std::string(output_item), Item()});
                                             result.outputs.emplace_back(
