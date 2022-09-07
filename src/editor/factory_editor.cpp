@@ -329,7 +329,7 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
     }
 }
 
-void FactoryEditor::output_factory_json(std::ostream& out) {
+void FactoryEditor::output_factory_json(std::ostream& out) const {
     out << "{";
 
     // Inputs

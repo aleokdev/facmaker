@@ -25,7 +25,7 @@ private:
     void update_item_statistics();
 
     void parse_factory_json(std::istream& input);
-    void output_factory_json(std::ostream& output);
+    void output_factory_json(std::ostream& output) const;
 
     void regenerate_cache();
 
