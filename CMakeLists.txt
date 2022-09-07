@@ -18,7 +18,7 @@ add_executable(
         "src/factory.cpp"
         "src/util/quantity_plot.cpp"
         "src/util/more_imgui.cpp"
-)
+        "src/uid.cpp")
 target_include_directories(facmaker PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/facmaker")
 target_include_directories(facmaker PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 

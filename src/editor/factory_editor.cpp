@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <boost/json.hpp>
+#include <charconv>
 #include <fmt/core.h>
 #include <fstream>
 #include <imgui.h>
@@ -20,7 +21,8 @@ namespace json = boost::json;
 
 namespace fmk {
 
-FactoryEditor::FactoryEditor() : factory{{}, {}} {
+FactoryEditor::FactoryEditor() :
+    factory{.items = {}, .machines = {}}, uid_pool(Uid(Uid::INVALID_VALUE + 1)) {
     imnodes_ctx = imnodes::EditorContextCreate();
     auto input_stream = std::ifstream("assets/starting_program.json");
     parse_factory_json(input_stream);
@@ -71,22 +73,16 @@ void FactoryEditor::update_processing_graph() {
     ImVec2 editor_pos = ImGui::GetCursorScreenPos();
 
     static std::optional<ImVec2> editor_node_start_pos;
-    FactoryIoUidMapT factory_input_uids;
-    FactoryIoUidMapT factory_output_uids;
-    std::unordered_map<Item::NameT, int> item_uids;
     auto machine_to_erase = factory.machines.cend();
-    int last_output_id;
 
-    draw_factory_inputs(factory, cache.factory_cache, item_uids);
-    draw_factory_machines(factory, cache.factory_cache, factory_input_uids, factory_output_uids,
-                          machine_to_erase);
-    draw_factory_outputs(factory, cache.factory_cache, item_uids, &last_output_id);
-    draw_factory_links(factory, cache.factory_cache, &last_output_id, factory_input_uids,
-                       factory_output_uids, item_uids);
+    draw_factory_inputs(factory, cache.factory_cache);
+    draw_factory_machines(factory, cache.factory_cache, machine_to_erase);
+    draw_factory_outputs(factory, cache.factory_cache);
+    draw_factory_links(factory, cache.factory_cache, uid_pool);
 
     if (new_machine) {
-        if (draw_machine_editor(factory, *new_machine, &last_output_id, editor_node_start_pos)) {
-            factory.machines.emplace_back(std::move(*new_machine));
+        if (draw_machine_editor(factory, *new_machine, uid_pool, editor_node_start_pos)) {
+            factory.machines[new_machine->machine_uid] = std::move(new_machine->machine);
             new_machine.reset();
             regenerate_cache();
         }
@@ -101,14 +97,11 @@ void FactoryEditor::update_processing_graph() {
 
     if (int start_attr; imnodes::IsLinkDropped(&start_attr)) {
         [&]() {
-            for (std::size_t machine_i = 0; machine_i < factory_input_uids.size(); machine_i++) {
-                const auto& machine_uids = factory_input_uids[machine_i];
-
-                for (std::size_t input_i = 0; input_i < machine_uids.size(); input_i++) {
-                    if (start_attr == machine_uids[input_i]) {
+            for (const auto& [machine_uid, machine] : factory.machines) {
+                for (const auto& input : machine.inputs) {
+                    if (start_attr == input.uid) {
                         // Convert this machine's input item into an input!
-                        factory.items[factory.machines[machine_i].inputs[input_i].item].type =
-                            Item::NodeType::Input;
+                        factory.items.at(input.item).type = Item::NodeType::Input;
 
                         regenerate_cache();
                         return;
@@ -116,14 +109,11 @@ void FactoryEditor::update_processing_graph() {
                 }
             }
 
-            for (std::size_t machine_i = 0; machine_i < factory_output_uids.size(); machine_i++) {
-                const auto& machine_uids = factory_output_uids[machine_i];
-
-                for (std::size_t output_i = 0; output_i < machine_uids.size(); output_i++) {
-                    if (start_attr == machine_uids[output_i]) {
+            for (const auto& [machine_uid, machine] : factory.machines) {
+                for (const auto& output : machine.outputs) {
+                    if (start_attr == output.uid) {
                         // Convert this machine's output item into an output!
-                        factory.items[factory.machines[machine_i].outputs[output_i].item].type =
-                            Item::NodeType::Output;
+                        factory.items.at(output.item).type = Item::NodeType::Output;
 
                         regenerate_cache();
                         return;
@@ -137,9 +127,8 @@ void FactoryEditor::update_processing_graph() {
         if (ImGui::MenuItem("New Machine")) {
             std::string new_machine_name = "Machine";
             new_machine_name.reserve(32);
-            new_machine.emplace(Machine{
-                std::move(new_machine_name),
-            });
+            new_machine.emplace(
+                MachineEditor{Machine{std::move(new_machine_name)}, uid_pool.generate()});
 
             editor_node_start_pos = ImVec2{
                 ImGui::GetMousePos().x - editor_pos.x - imnodes::EditorContextGetPanning().x,
@@ -151,11 +140,11 @@ void FactoryEditor::update_processing_graph() {
     if (ImGui::Begin("Factory Debug")) {
         ImGui::Text("Inputs");
         for (const auto& input : cache.factory_cache.inputs()) {
-            ImGui::TextDisabled("%s", input.c_str());
+            ImGui::TextDisabled("%s", factory.items.at(input).name.c_str());
         }
         ImGui::Text("Outputs");
         for (const auto& output : cache.factory_cache.outputs()) {
-            ImGui::TextDisabled("%s", output.c_str());
+            ImGui::TextDisabled("%s", factory.items.at(output).name.c_str());
         }
         ImGui::End();
     }
@@ -195,25 +184,67 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
         had_errors = true;
     } else {
         auto val = parser.release();
-        if (auto obj = val.if_object()) {
-            if (auto inputs_val = obj->if_contains("inputs")) {
-                if (auto inputs = inputs_val->if_object()) {
-                    for (const auto& [input_name, _] : *inputs) {
-                        parsed_items[std::string(input_name)].type = Item::NodeType::Input;
-                    }
-                }
+        if (const auto obj = val.if_object()) {
+            Uid next_uid(-1);
+            if (const auto uid_pool_val = obj->if_contains("uid_pool")) {
+                next_uid.value =
+                    static_cast<int>(uid_pool_val->as_object().at("next_uid").as_int64());
+            } else {
+                PLOG_ERROR << "JSON loading error: `uid_pool` key not found";
+                had_errors = true;
             }
-            if (auto outputs_val = obj->if_contains("outputs")) {
-                if (auto outputs = outputs_val->if_object()) {
-                    for (const auto& [output_name, _] : *outputs) {
-                        parsed_items[std::string(output_name)].type = Item::NodeType::Output;
+            UidPool parse_uid_pool(next_uid);
+            if (const auto items_val = obj->if_contains("items")) {
+                if (const auto items = items_val->if_object()) {
+                    for (const auto& [item_uid_str, item_val] : *items) {
+                        Uid item_uid(Uid::INVALID_VALUE);
+                        const auto [_, ec] = std::from_chars(
+                            item_uid_str.data(), item_uid_str.data() + item_uid_str.size(),
+                            item_uid.value);
+
+                        if (ec != std::errc()) {
+                            PLOG_ERROR << "JSON loading error: Could not parse UID";
+                            had_errors = true;
+                        }
+
+                        if (auto item = item_val.if_object()) {
+                            parsed_items[item_uid].name = item->at("name").as_string();
+                            if (auto ty = item->at("type").if_string()) {
+                                if (*ty == "input") {
+                                    parsed_items[item_uid].type = Item::NodeType::Input;
+                                    parsed_items[item_uid].attribute_uid = uid_pool.generate();
+                                } else if (*ty == "output") {
+                                    parsed_items[item_uid].type = Item::NodeType::Output;
+                                    parsed_items[item_uid].attribute_uid = uid_pool.generate();
+                                } else if (*ty == "internal") {
+                                    parsed_items[item_uid].type = Item::NodeType::Internal;
+                                }
+                            }
+                            if (auto quantity = item->at("type").if_int64()) {
+                                parsed_items[item_uid].starting_quantity =
+                                    static_cast<int>(*quantity);
+                            }
+                        }
                     }
+                } else {
+                    PLOG_ERROR << "JSON loading error: `items` must be an object`";
+                    had_errors = true;
                 }
             }
 
             if (auto machines_val = obj->if_contains("machines")) {
-                if (auto machines = machines_val->if_array()) {
-                    for (auto machine_val : *machines) {
+                if (const auto machines = machines_val->if_object()) {
+                    for (const auto& [machine_uid_str, machine_val] : *machines) {
+                        Uid machine_uid(Uid::INVALID_VALUE);
+                        const auto [_, ec] = std::from_chars(
+                            machine_uid_str.data(), machine_uid_str.data() + machine_uid_str.size(),
+                            machine_uid.value);
+
+                        if (ec != std::errc()) {
+                            PLOG_ERROR << "JSON loading error: Could not parse UID";
+                            had_errors = true;
+                        }
+
                         if (auto machine = machine_val.if_object()) {
                             Machine result;
 
@@ -247,12 +278,22 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
 
                             if (auto inputs_val = machine->if_contains("inputs")) {
                                 if (auto inputs = inputs_val->if_object()) {
-                                    for (const auto& [input_item, input_qty] : *inputs) {
+                                    for (const auto& [input_uid_str, input_qty] : *inputs) {
+                                        Uid input_uid(-1);
+                                        const auto [_, ec] = std::from_chars(
+                                            input_uid_str.data(),
+                                            input_uid_str.data() + input_uid_str.size(),
+                                            input_uid.value);
+
+                                        if (ec != std::errc()) {
+                                            PLOG_ERROR << "JSON loading error: Could not parse UID";
+                                            had_errors = true;
+                                        }
                                         if (auto quantity = input_qty.if_int64()) {
-                                            parsed_items.insert({std::string(input_item), Item()});
+                                            parsed_items.insert({input_uid, Item{}});
                                             result.inputs.emplace_back(
-                                                ItemStream{std::string(input_item.data()),
-                                                           static_cast<int>(*quantity)});
+                                                ItemStream{input_uid, static_cast<int>(*quantity),
+                                                           parse_uid_pool.generate()});
                                         } else {
                                             PLOG_ERROR << "JSON loading error: Input quantities "
                                                           "must be integers";
@@ -272,12 +313,22 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
 
                             if (auto outputs_val = machine->if_contains("outputs")) {
                                 if (auto outputs = outputs_val->if_object()) {
-                                    for (const auto& [output_item, output_qty] : *outputs) {
+                                    for (const auto& [output_uid_str, output_qty] : *outputs) {
+                                        Uid output_uid(-1);
+                                        const auto [_, ec] = std::from_chars(
+                                            output_uid_str.data(),
+                                            output_uid_str.data() + output_uid_str.size(),
+                                            output_uid.value);
+
+                                        if (ec != std::errc()) {
+                                            PLOG_ERROR << "JSON loading error: Could not parse UID";
+                                            had_errors = true;
+                                        }
                                         if (auto quantity = output_qty.if_int64()) {
-                                            parsed_items.insert({std::string(output_item), Item()});
+                                            parsed_items.insert({output_uid, Item{}});
                                             result.outputs.emplace_back(
-                                                ItemStream{std::string(output_item.data()),
-                                                           static_cast<int>(*quantity)});
+                                                ItemStream{output_uid, static_cast<int>(*quantity),
+                                                           parse_uid_pool.generate()});
                                         } else {
                                             PLOG_ERROR << "JSON loading error: Output quantities "
                                                           "must be integers";
@@ -295,7 +346,7 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
                                 had_errors = true;
                             }
 
-                            parsed_machines.emplace_back(result);
+                            parsed_machines[machine_uid] = result;
                         } else {
                             PLOG_ERROR << "JSON loading error: Machines must be JSON objects";
                             had_errors = true;
@@ -332,13 +383,19 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
 void FactoryEditor::output_factory_json(std::ostream& out) const {
     out << "{";
 
-    // Inputs
+    // Items
     {
-        out << "\"inputs\":{";
-        const auto& inputs = cache.factory_cache.inputs();
-        for (std::size_t i = 0; i < inputs.size(); i++) {
-            out << "\"" << inputs[i] << "\":0";
-            if (i < inputs.size() - 1) {
+        out << "\"items\":{";
+        for (auto item_it = factory.items.cbegin(); item_it != factory.items.cend(); item_it++) {
+            const auto& [item_uid, item] = *item_it;
+            out << "\"" << item_uid.value << "\":{\"name\":" << item.name << ",\"type\":\"";
+            switch (item.type) {
+                case Item::NodeType::Input: out << "input"; break;
+                case Item::NodeType::Output: out << "output"; break;
+                case Item::NodeType::Internal: out << "internal"; break;
+            }
+            out << "\",\"start_with\":" << item.starting_quantity << "}";
+            if (std::next(item_it) != factory.items.cend()) {
                 out << ",";
             }
         }
@@ -347,18 +404,20 @@ void FactoryEditor::output_factory_json(std::ostream& out) const {
 
     // Machines
     {
-        out << "\"machines\":[";
+        out << "\"machines\":{";
         const auto& machines = factory.machines;
-        for (std::size_t i = 0; i < machines.size(); i++) {
-            out << "{";
+        for (auto machine_it = machines.cbegin(); machine_it != machines.cend(); machine_it++) {
+            const auto& [machine_uid, machine] = *machine_it;
+
+            out << "\"" << machine_uid.value << "\":"
+                << "{";
             {
-                const auto& machine = machines[i];
                 out << "\"name\":\"" << machine.name << "\",";
                 out << "\"inputs\":{";
                 {
                     const auto& inputs = machine.inputs;
                     for (std::size_t i = 0; i < inputs.size(); i++) {
-                        out << "\"" << inputs[i].item << "\":" << inputs[i].quantity;
+                        out << "\"" << inputs[i].item.value << "\":" << inputs[i].quantity;
                         if (i < inputs.size() - 1) {
                             out << ",";
                         }
@@ -369,7 +428,7 @@ void FactoryEditor::output_factory_json(std::ostream& out) const {
                 {
                     const auto& outputs = machine.outputs;
                     for (std::size_t i = 0; i < outputs.size(); i++) {
-                        out << "\"" << outputs[i].item << "\":" << outputs[i].quantity;
+                        out << "\"" << outputs[i].item.value << "\":" << outputs[i].quantity;
                         if (i < outputs.size() - 1) {
                             out << ",";
                         }
@@ -379,20 +438,7 @@ void FactoryEditor::output_factory_json(std::ostream& out) const {
                 out << "\"time\":" << machine.op_time.count();
             }
             out << "}";
-            if (i < machines.size() - 1) {
-                out << ",";
-            }
-        }
-        out << "],";
-    }
-
-    // Outputs
-    {
-        out << "\"outputs\":{";
-        const auto& outputs = cache.factory_cache.outputs();
-        for (std::size_t i = 0; i < outputs.size(); i++) {
-            out << "\"" << outputs[i] << "\":0";
-            if (i < outputs.size() - 1) {
+            if (std::next(machine_it) != factory.machines.cend()) {
                 out << ",";
             }
         }

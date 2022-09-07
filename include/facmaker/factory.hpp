@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "item.hpp"
+#include "uid.hpp"
 #include "util/quantity_plot.hpp"
 
 namespace fmk {
@@ -30,13 +31,13 @@ struct Machine {
 
 struct ItemNode {
     struct Link {
-        Machine::IndexT machine;
+        Uid machine;
         std::size_t io_index;
     };
 
     struct LinkHash {
         std::size_t operator()(const ItemNode::Link& link) const noexcept {
-            return link.io_index ^ (link.machine << 1);
+            return link.io_index ^ (link.machine.value << 1);
         }
     };
 
@@ -50,8 +51,8 @@ inline bool operator==(const ItemNode::Link& a, const ItemNode::Link& b) {
 
 struct Factory;
 struct Factory {
-    using MachinesT = std::vector<Machine>;
-    using ItemsT = std::unordered_map<Item::NameT, Item>;
+    using MachinesT = std::unordered_map<Uid, Machine>;
+    using ItemsT = std::unordered_map<Uid, Item>;
 
     /// The items being processed in this factory.
     ItemsT items;
@@ -60,18 +61,18 @@ struct Factory {
 
     class Cache {
     public:
-        using ItemNamesT = std::vector<Item::NameT>;
-        using ItemNodesT = std::unordered_map<Item::NameT, ItemNode>;
-        using QuantityPlotsT = std::unordered_map<Item::NameT, util::QuantityPlot>;
+        using ItemUidsT = std::vector<Uid>;
+        using ItemNodesT = std::unordered_map<Uid, ItemNode>;
+        using QuantityPlotsT = std::unordered_map<Uid, util::QuantityPlot>;
 
-        Cache() {}
+        Cache() = default;
 
         /// A generated container with quantity plots for all the items in this factory.
         const QuantityPlotsT& plots() const { return _plots; }
         /// A generated container with all the input item names in this factory.
-        const ItemNamesT& inputs() const { return _inputs; }
+        const ItemUidsT& inputs() const { return _inputs; }
         /// A generated container with all the output item names in this factory.
-        const ItemNamesT& outputs() const { return _outputs; }
+        const ItemUidsT& outputs() const { return _outputs; }
         /// A generated map of the relationship of items with the machines in this factory.
         const ItemNodesT& item_nodes() const { return _item_nodes; }
         /// The amount of ticks simulated for the item processing.
@@ -81,8 +82,8 @@ struct Factory {
         Cache(const Factory&, std::size_t ticks_to_simulate);
         friend class Factory;
 
-        ItemNamesT _inputs;
-        ItemNamesT _outputs;
+        ItemUidsT _inputs;
+        ItemUidsT _outputs;
         ItemNodesT _item_nodes;
         QuantityPlotsT _plots;
         std::size_t _ticks_simulated = 0;

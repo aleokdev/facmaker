@@ -12,14 +12,14 @@ Factory::Cache::QuantityPlotsT simulate_item_evolution(const Factory::ItemsT& it
 
 Factory::Cache::Cache(const Factory& factory, std::size_t ticks_to_simulate) :
     _item_nodes(calculate_links(factory.machines)), _ticks_simulated(ticks_to_simulate) {
-    for (auto& [item_name, item] : factory.items) {
+    for (auto& [item_uid, item] : factory.items) {
         switch (item.type) {
             case Item::NodeType::Input: {
-                _inputs.emplace_back(item_name);
+                _inputs.emplace_back(item_uid);
             } break;
 
             case Item::NodeType::Output: {
-                _outputs.emplace_back(item_name);
+                _outputs.emplace_back(item_uid);
             } break;
 
             default: break;
@@ -33,15 +33,14 @@ Factory::Cache::Cache(const Factory& factory, std::size_t ticks_to_simulate) :
 Factory::Cache::ItemNodesT calculate_links(const Factory::MachinesT& machines) {
     Factory::Cache::ItemNodesT result;
 
-    for (Machine::IndexT machine_i = 0; machine_i < machines.size(); machine_i++) {
-        auto& machine = machines[machine_i];
-
+    for (const auto& [machine_uid, machine] : machines) {
         for (std::size_t input_i = 0; input_i < machine.inputs.size(); input_i++) {
-            result[machine.inputs[input_i].item].inputs.insert(ItemNode::Link{machine_i, input_i});
+            result[machine.inputs[input_i].item].inputs.insert(
+                ItemNode::Link{machine_uid, input_i});
         }
         for (std::size_t output_i = 0; output_i < machine.outputs.size(); output_i++) {
             result[machine.outputs[output_i].item].outputs.insert(
-                ItemNode::Link{machine_i, output_i});
+                ItemNode::Link{machine_uid, output_i});
         }
     }
 
@@ -62,12 +61,12 @@ Factory::Cache::QuantityPlotsT simulate_item_evolution(const Factory::ItemsT& it
         int starting_tick;
     };
 
-    std::unordered_map<Machine::IndexT, ProcessingTask> tasks;
+    std::unordered_map<Uid, ProcessingTask> tasks;
 
     for (int tick = 0; tick < ticks_to_simulate; tick++) {
         // Process tasks
-        for (auto task = tasks.begin(); task != tasks.end();) {
-            auto& machine = machines[task->first];
+        for (auto task = tasks.cbegin(); task != tasks.cend();) {
+            auto& machine = machines.at(task->first);
 
             // Check if the task has been finished
             if (tick >= task->second.starting_tick + machine.op_time.count()) {
@@ -81,9 +80,7 @@ Factory::Cache::QuantityPlotsT simulate_item_evolution(const Factory::ItemsT& it
             }
         }
 
-        for (Machine::IndexT machine_i = 0; machine_i < machines.size(); machine_i++) {
-            auto& machine = machines[machine_i];
-
+        for (const auto& [machine_uid, machine] : machines) {
             // Check if this machine can do a processing cycle
             bool requirements_fulfilled = std::all_of(
                 machine.inputs.begin(), machine.inputs.end(),
@@ -94,7 +91,7 @@ Factory::Cache::QuantityPlotsT simulate_item_evolution(const Factory::ItemsT& it
                 });
 
             // Check if this machine is not currently busy with a previous cycle
-            bool is_machine_free = tasks.find(machine_i) == tasks.end();
+            bool is_machine_free = tasks.find(machine_uid) == tasks.end();
 
             if (is_machine_free && requirements_fulfilled) {
                 // Remove items required
@@ -103,7 +100,7 @@ Factory::Cache::QuantityPlotsT simulate_item_evolution(const Factory::ItemsT& it
                 }
 
                 // Add processing task
-                tasks[machine_i] = ProcessingTask{tick};
+                tasks[machine_uid] = ProcessingTask{tick};
             }
         }
     }
