@@ -3,13 +3,13 @@
 #include <algorithm>
 #include <boost/json.hpp>
 #include <fmt/core.h>
+#include <fstream>
 #include <imgui.h>
 #include <imnodes.h>
 #include <implot.h>
 #include <iostream>
 #include <optional>
 #include <plog/Log.h>
-#include <sstream>
 #include <string>
 #include <string_view>
 
@@ -18,66 +18,11 @@
 
 namespace json = boost::json;
 
-constexpr std::string_view starting_program = R"({
-    "inputs": {
-        "Iron Ore": 0
-    },
-    "start_with": {
-        "Iron Ore": 64
-    },
-    "machines": [
-        {
-            "name": "Macerator",
-            "inputs": {
-                "Iron Ore": 1
-            },
-            "outputs": {
-                "Crushed Iron Ore": 2
-            },
-            "time": 200
-        },
-        {
-            "name": "Furnace",
-            "inputs": {
-                "Crushed Iron Ore": 1
-            },
-            "outputs": {
-                "Iron Ingot": 1
-            },
-            "time": 200
-        },
-        {
-        	"name": "Test",
-        	"inputs": {},
-        	"outputs": {
-        		"Test": 1
-        	},
-        	"time": 1
-        },
-        {
-        	"name": "Test2",
-        	"inputs": {
-                "Test": 1
-            },
-        	"outputs": {
-        		"Foo": 1
-        	},
-        	"time": 1
-        }
-    ],
-    "outputs": {
-        "Iron Ingot": 0,
-        "Test": 0
-    },
-    "simulate": 1000
-}
-)";
-
 namespace fmk {
 
 FactoryEditor::FactoryEditor() : factory{{}, {}} {
     imnodes_ctx = imnodes::EditorContextCreate();
-    auto input_stream = std::istringstream(std::string(starting_program));
+    auto input_stream = std::ifstream("assets/starting_program.json");
     parse_factory_json(input_stream);
 
     imnodes::EditorContextSet(imnodes_ctx);

@@ -1,0 +1,53 @@
+{
+  "inputs": {
+    "Iron Ore": 0
+  },
+  "start_with": {
+    "Iron Ore": 64
+  },
+  "machines": [
+    {
+      "name": "Macerator",
+      "inputs": {
+        "Iron Ore": 1
+      },
+      "outputs": {
+        "Crushed Iron Ore": 2
+      },
+      "time": 200
+    },
+    {
+      "name": "Furnace",
+      "inputs": {
+        "Crushed Iron Ore": 1
+      },
+      "outputs": {
+        "Iron Ingot": 1
+      },
+      "time": 200
+    },
+    {
+      "name": "Test",
+      "inputs": {},
+      "outputs": {
+        "Test": 1
+      },
+      "time": 1
+    },
+    {
+      "name": "Test2",
+      "inputs": {
+        "Test": 1
+      },
+      "outputs": {
+        "Foo": 1
+      },
+      "time": 1
+    }
+  ],
+  "outputs": {
+    "Iron Ingot": 0,
+    "Test": 0
+  },
+  "simulate": 1000
+}
