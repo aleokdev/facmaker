@@ -87,7 +87,7 @@ bool init_graphics(GLFWwindow** out_window) {
         }
     }
 #endif
-    *out_window = glfwCreateWindow(window_w, window_h, "facmaker", NULL, NULL);
+    *out_window = glfwCreateWindow(window_w, window_h, "facmaker", nullptr, nullptr);
     if (!*out_window) {
         return false;
     }
@@ -99,6 +99,7 @@ bool init_graphics(GLFWwindow** out_window) {
     // Setup ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImGui::GetIO().IniFilename = "assets/imgui.ini";
     ImPlot::CreateContext();
 
     // Setup Platform/Renderer backends

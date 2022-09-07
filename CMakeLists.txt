@@ -4,19 +4,20 @@ project(facmaker CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
-if(CMAKE_BUILD_TYPE MATCHES Debug)
+if (CMAKE_BUILD_TYPE MATCHES Debug)
     message(STATUS "Using debug mode")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG")
-else()
+else ()
     message(STATUS "Using build type ${CMAKE_BUILD_TYPE}")
-endif()
+endif ()
 
-add_executable(facmaker
-    "src/main.cpp"
-    "src/editor/factory_editor.cpp"
-    "src/factory.cpp"
-    "src/util/quantity_plot.cpp"
-    "src/util/more_imgui.cpp"
+add_executable(
+        facmaker
+        "src/main.cpp"
+        "src/editor/factory_editor.cpp"
+        "src/factory.cpp"
+        "src/util/quantity_plot.cpp"
+        "src/util/more_imgui.cpp"
 )
 target_include_directories(facmaker PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/facmaker")
 target_include_directories(facmaker PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -24,3 +25,22 @@ target_include_directories(facmaker PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 add_subdirectory(ext)
 
 target_link_libraries(facmaker PRIVATE ext)
+
+# Copy assets dir on build
+file(
+        GENERATE
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/CopyConfigurationData$<CONFIG>.cmake"
+        CONTENT "file(
+                    COPY \"${PROJECT_SOURCE_DIR}/assets/\"
+                    DESTINATION \"$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets\"
+                    PATTERN \"CMakeLists.txt\" EXCLUDE
+                 )"
+)
+
+add_custom_target(
+        copy_assets
+        COMMAND "${CMAKE_COMMAND}" -P "CopyConfigurationData$<CONFIG>.cmake"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+)
+
+add_dependencies(facmaker copy_assets)
