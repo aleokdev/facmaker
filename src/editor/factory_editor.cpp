@@ -7,6 +7,7 @@
 #include <imgui.h>
 #include <imnodes.h>
 #include <implot.h>
+#include <iomanip>
 #include <iostream>
 #include <optional>
 #include <plog/Log.h>
@@ -168,6 +169,17 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
     std::size_t ticks_to_simulate = 6000;
     bool had_errors = false;
 
+    // We set the editor context to be able to set positions
+    imnodes::EditorContextSet(imnodes_ctx);
+
+    auto parse_xy = [](json::object const& object, Uid uid) {
+        if (auto x_val = object.if_contains("x")) {
+            imnodes::SetNodeEditorSpacePos(uid.value,
+                                           {static_cast<float>(x_val->as_double()),
+                                            static_cast<float>(object.at("y").as_double())});
+        }
+    };
+
     json::error_code parse_error;
     json::stream_parser parser;
     std::size_t line_i = 0;
@@ -222,6 +234,8 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
                                 parsed_items[item_uid].starting_quantity =
                                     static_cast<int>(*quantity);
                             }
+
+                            parse_xy(*item, item_uid);
                         }
                     }
                 } else {
@@ -344,6 +358,8 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
                                 had_errors = true;
                             }
 
+                            parse_xy(*machine, machine_uid);
+
                             parsed_machines[machine_uid] = result;
                         } else {
                             PLOG_ERROR << "JSON loading error: Machines must be JSON objects";
@@ -386,13 +402,28 @@ void FactoryEditor::output_factory_json(std::ostream& out) const {
         out << "\"items\":{";
         for (auto item_it = factory.items.cbegin(); item_it != factory.items.cend(); item_it++) {
             const auto& [item_uid, item] = *item_it;
-            out << "\"" << item_uid.value << "\":{\"name\":" << item.name << ",\"type\":\"";
+            out << "\"" << item_uid.value << "\":{\"name\":\"" << item.name << "\",\"type\":\"";
+            bool write_xy = false;
             switch (item.type) {
-                case Item::NodeType::Input: out << "input"; break;
-                case Item::NodeType::Output: out << "output"; break;
+                case Item::NodeType::Input:
+                    out << "input";
+                    write_xy = true;
+                    break;
+                case Item::NodeType::Output:
+                    out << "output";
+                    write_xy = true;
+                    break;
                 case Item::NodeType::Internal: out << "internal"; break;
             }
-            out << "\",\"start_with\":" << item.starting_quantity << "}";
+            out << "\",\"start_with\":" << item.starting_quantity;
+            if (write_xy) {
+                imnodes::EditorContextSet(imnodes_ctx);
+                const auto [x, y] = imnodes::GetNodeEditorSpacePos(item_uid.value);
+                out << ",\"x\":" << std::fixed << std::setprecision(1) << x << ",\"y\":" << y
+                    << "}";
+            } else {
+                out << "}";
+            }
             if (std::next(item_it) != factory.items.cend()) {
                 out << ",";
             }
@@ -433,7 +464,9 @@ void FactoryEditor::output_factory_json(std::ostream& out) const {
                     }
                 }
                 out << "},";
-                out << "\"time\":" << machine.op_time.count();
+                out << "\"time\":" << machine.op_time.count() << ",";
+                const auto [x, y] = imnodes::GetNodeEditorSpacePos(machine_uid.value);
+                out << "\"x\":" << std::fixed << std::setprecision(1) << x << ",\"y\":" << y;
             }
             out << "}";
             if (std::next(machine_it) != factory.machines.cend()) {
@@ -444,7 +477,9 @@ void FactoryEditor::output_factory_json(std::ostream& out) const {
     }
 
     // Simulate value
-    { out << "\"simulate\":" << cache.factory_cache.ticks_simulated(); }
+    { out << "\"simulate\":" << cache.factory_cache.ticks_simulated() << ","; }
+
+    { out << "\"uid_pool\":{\"next_uid\":" << uid_pool.get_next_uid().value << "}"; }
 
     out << "}";
 }

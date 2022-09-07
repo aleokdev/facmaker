@@ -1,38 +1,26 @@
 {
   "items": {
-    "-5": {
-      "name": "Iron Ore",
-      "type": "input",
-      "start_with": 64
+    "-1": {
+      "name": "Crushed Iron Ore",
+      "type": "internal",
+      "start_with": 0
     },
     "-4": {
       "name": "Iron Ingot",
-      "type": "output"
+      "type": "output",
+      "start_with": 0,
+      "x": 650.0,
+      "y": 350.0
     },
-    "-3": {
-      "name": "Test",
-      "type": "output"
-    },
-    "-2": {
-      "name": "Foo",
-      "type": "internal"
-    },
-    "-1": {
-      "name": "Crushed Iron Ore",
-      "type": "internal"
+    "-5": {
+      "name": "Iron Ore",
+      "type": "input",
+      "start_with": 0,
+      "x": 150.0,
+      "y": 350.0
     }
   },
   "machines": {
-    "1": {
-      "name": "Macerator",
-      "inputs": {
-        "-5": 1
-      },
-      "outputs": {
-        "-1": 2
-      },
-      "time": 200
-    },
     "2": {
       "name": "Furnace",
       "inputs": {
@@ -41,30 +29,25 @@
       "outputs": {
         "-4": 1
       },
-      "time": 200
+      "time": 200,
+      "x": 450.0,
+      "y": 350.0
     },
-    "3": {
-      "name": "Test",
+    "1": {
+      "name": "Macerator",
       "inputs": {
+        "-5": 1
       },
       "outputs": {
-        "-3": 1
+        "-1": 2
       },
-      "time": 1
-    },
-    "4": {
-      "name": "Test2",
-      "inputs": {
-        "-3": 1
-      },
-      "outputs": {
-        "-2": 1
-      },
-      "time": 1
+      "time": 200,
+      "x": 250.0,
+      "y": 350.0
     }
   },
   "simulate": 1000,
   "uid_pool": {
-    "next_uid": 5
+    "next_uid": -2147483258
   }
 }

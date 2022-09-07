@@ -23,6 +23,7 @@ public:
     Uid generate();
 
     [[nodiscard]] std::size_t available() const;
+    [[nodiscard]] Uid get_next_uid() const { return next_uid; }
 
 private:
     Uid next_uid{std::numeric_limits<int>::min()};
