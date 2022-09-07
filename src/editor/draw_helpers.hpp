@@ -16,9 +16,9 @@ inline void draw_item_graph(const Factory& factory,
     auto& item = factory.items.at(item_uid);
     auto& plot = cache.plots().at(item_uid);
 
-    ImPlot::SetNextPlotLimits(1, cache.ticks_simulated() + 1, 0, plot.max_value() + 1,
-                              (expanded && !reload_plot_limits) ? ImGuiCond_Appearing
-                                                                : ImGuiCond_Always);
+    ImPlot::SetNextPlotLimits(
+        1, static_cast<double>(cache.ticks_simulated()) + 1., 0., plot.max_value() + 1,
+        (expanded && !reload_plot_limits) ? ImGuiCond_Appearing : ImGuiCond_Always);
 
     {
         double ticks_x[] = {1, static_cast<double>(cache.ticks_simulated()) / 2,
@@ -44,9 +44,10 @@ inline void draw_item_graph(const Factory& factory,
         // Shift the X axis one value to the left so that the total tick count equals the
         // last value plotted
         std::vector<int> plot_x(plot_size);
-        for (std::size_t i = 1; i <= plot_size; i++) { plot_x[i - 1] = i; }
+        for (int i = 1; i <= plot_size; i++) { plot_x[i - 1] = i; }
 
-        ImPlot::PlotStairs(item.name.c_str(), plot_x.data(), plot.container().data(), plot_size);
+        ImPlot::PlotStairs(item.name.c_str(), plot_x.data(), plot.container().data(),
+                           static_cast<int>(plot_size));
 
         ImPlot::EndPlot();
     }
@@ -233,10 +234,8 @@ inline bool draw_machine_editor(const Factory& factory,
     // Draw inputs
     editor.machine.inputs.erase(
         std::remove_if(editor.machine.inputs.begin(), editor.machine.inputs.end(),
-                       // FIXME: These generated UIDs will be discarded in a single frame! We should
-                       // reuse them
                        [&draw_io_manip, &uid_pool](ItemStream& input) -> bool {
-                           imnodes::BeginInputAttribute(uid_pool.generate().value);
+                           imnodes::BeginInputAttribute(input.uid.value);
                            bool remove = draw_io_manip(input);
                            imnodes::EndInputAttribute();
                            return remove;
@@ -250,8 +249,8 @@ inline bool draw_machine_editor(const Factory& factory,
     // Draw outputs
     editor.machine.outputs.erase(
         std::remove_if(editor.machine.outputs.begin(), editor.machine.outputs.end(),
-                       [&factory, &draw_io_manip, &uid_pool](ItemStream& output) -> bool {
-                           imnodes::BeginOutputAttribute(uid_pool.generate().value);
+                       [&draw_io_manip, &uid_pool](ItemStream& output) -> bool {
+                           imnodes::BeginOutputAttribute(output.uid.value);
                            ImGui::Indent(40);
                            bool remove = draw_io_manip(output);
                            ImGui::Unindent();
@@ -268,7 +267,7 @@ inline bool draw_machine_editor(const Factory& factory,
     ImGui::Unindent();
 
     ImGui::SetNextItemWidth(50);
-    int op_time = editor.machine.op_time.count();
+    int op_time = static_cast<int>(editor.machine.op_time.count());
     ImGui::DragInt("##tpop", &op_time, 1.f, 1, 99999);
     editor.machine.op_time = util::ticks(op_time);
     ImGui::SameLine();

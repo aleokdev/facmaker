@@ -15,13 +15,11 @@ namespace fmk {
 
 namespace util {
 
-using ticks = std::chrono::duration<std::int64_t, std::ratio<1, 20>>;
+using ticks = std::chrono::duration<int, std::ratio<1, 20>>;
 
 }
 
 struct Machine {
-    using IndexT = std::size_t;
-
     std::string name;
 
     std::vector<ItemStream> inputs;
@@ -90,7 +88,7 @@ struct Factory {
     };
 
     Cache generate_cache(std::size_t ticks_to_simulate) const {
-        return Cache(*this, ticks_to_simulate);
+        return {*this, ticks_to_simulate};
     };
 };
 

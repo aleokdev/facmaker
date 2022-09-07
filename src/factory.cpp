@@ -1,6 +1,5 @@
 #include "factory.hpp"
 #include <algorithm>
-#include <iostream>
 
 namespace fmk {
 
@@ -8,7 +7,7 @@ Factory::Cache::ItemNodesT calculate_links(const Factory::MachinesT& machines);
 Factory::Cache::QuantityPlotsT simulate_item_evolution(const Factory::ItemsT& items,
                                                        const Factory::MachinesT& machines,
                                                        const Factory::Cache::ItemNodesT& nodes,
-                                                       int ticks_to_simulate);
+                                                       std::size_t ticks_to_simulate);
 
 Factory::Cache::Cache(const Factory& factory, std::size_t ticks_to_simulate) :
     _item_nodes(calculate_links(factory.machines)), _ticks_simulated(ticks_to_simulate) {
@@ -50,7 +49,7 @@ Factory::Cache::ItemNodesT calculate_links(const Factory::MachinesT& machines) {
 Factory::Cache::QuantityPlotsT simulate_item_evolution(const Factory::ItemsT& items,
                                                        const Factory::MachinesT& machines,
                                                        const Factory::Cache::ItemNodesT& nodes,
-                                                       int ticks_to_simulate) {
+                                                       std::size_t ticks_to_simulate) {
     Factory::Cache::QuantityPlotsT plots;
     plots.reserve(items.size());
     for (auto& [item_name, item] : items) {

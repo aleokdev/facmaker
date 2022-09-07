@@ -14,8 +14,6 @@
 
 #include "editor/factory_editor.hpp"
 
-#include <iostream>
-
 bool init_graphics(GLFWwindow** out_window);
 
 static imnodes::Context* imnodes_context;

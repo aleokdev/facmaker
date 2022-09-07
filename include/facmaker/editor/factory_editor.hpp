@@ -43,11 +43,6 @@ private:
         Factory::Cache factory_cache;
     } cache;
 
-    struct LogMessage {
-        enum class Severity { Info, Warning, Error } severity;
-        std::string message;
-    };
-
     Factory factory;
     UidPool uid_pool;
     imnodes::EditorContext* imnodes_ctx;

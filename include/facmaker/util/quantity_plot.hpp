@@ -8,7 +8,7 @@ class QuantityPlot {
 public:
     using ContainerT = std::vector<int>;
 
-    QuantityPlot();
+    QuantityPlot() = default;
     explicit QuantityPlot(std::size_t capacity);
     QuantityPlot(std::size_t capacity, int starting_val);
 

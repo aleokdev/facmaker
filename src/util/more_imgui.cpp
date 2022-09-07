@@ -20,7 +20,7 @@ bool SelectableInput(
 
     ImGuiID id = window->GetID("##Input");
     bool temp_input_is_active = TempInputIsActive(id);
-    bool temp_input_start = ret ? IsMouseDoubleClicked(0) : false;
+    bool temp_input_start = ret && IsMouseDoubleClicked(0);
 
     if (temp_input_start)
         SetActiveID(id, window);

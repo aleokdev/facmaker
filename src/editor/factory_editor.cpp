@@ -1,6 +1,5 @@
 #include "editor/factory_editor.hpp"
 
-#include <algorithm>
 #include <boost/json.hpp>
 #include <charconv>
 #include <fmt/core.h>
@@ -15,7 +14,6 @@
 #include <string_view>
 
 #include "editor/draw_helpers.hpp"
-#include "util/more_imgui.hpp"
 
 namespace json = boost::json;
 
@@ -99,7 +97,7 @@ void FactoryEditor::update_processing_graph() {
         [&]() {
             for (const auto& [machine_uid, machine] : factory.machines) {
                 for (const auto& input : machine.inputs) {
-                    if (start_attr == input.uid) {
+                    if (start_attr == input.uid.value) {
                         // Convert this machine's input item into an input!
                         factory.items.at(input.item).type = Item::NodeType::Input;
 
@@ -111,7 +109,7 @@ void FactoryEditor::update_processing_graph() {
 
             for (const auto& [machine_uid, machine] : factory.machines) {
                 for (const auto& output : machine.outputs) {
-                    if (start_attr == output.uid) {
+                    if (start_attr == output.uid.value) {
                         // Convert this machine's output item into an output!
                         factory.items.at(output.item).type = Item::NodeType::Output;
 

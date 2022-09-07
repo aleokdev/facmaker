@@ -8,8 +8,6 @@
 
 namespace fmk {
 
-class QuantityGraph;
-
 struct Item {
     enum class NodeType { Input, Output, Internal } type = NodeType::Internal;
     int starting_quantity = 0;

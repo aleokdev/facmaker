@@ -7,7 +7,7 @@ namespace fmk {
 struct Uid {
     static constexpr int INVALID_VALUE = std::numeric_limits<int>::min();
 
-    constexpr Uid(int val) : value(val) {}
+    explicit constexpr Uid(int val) : value(val) {}
     Uid() = delete;
 
     // This is currently limited by imnodes
@@ -18,14 +18,14 @@ struct Uid {
 
 class UidPool {
 public:
-    UidPool(Uid next_uid) : next_uid(next_uid) {}
+    explicit UidPool(Uid next_uid) : next_uid(next_uid) {}
 
     Uid generate();
 
-    std::size_t available() const;
+    [[nodiscard]] std::size_t available() const;
 
 private:
-    Uid next_uid = {std::numeric_limits<int>::min()};
+    Uid next_uid{std::numeric_limits<int>::min()};
 };
 
 } // namespace fmk
