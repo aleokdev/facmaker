@@ -38,7 +38,7 @@ void FactoryEditor::draw() {
 
 void FactoryEditor::update_processing_graph() {
     ImGui::SetNextWindowSize(ImVec2{500, 500}, ImGuiCond_Appearing);
-    ImGui::Begin("Factory Displayer", nullptr, ImGuiWindowFlags_MenuBar);
+    ImGui::Begin("Factory Display", nullptr, ImGuiWindowFlags_MenuBar);
 
     if (ImGui::BeginMenuBar()) {
         if (ImGui::MenuItem("Import From Clipboard")) {
