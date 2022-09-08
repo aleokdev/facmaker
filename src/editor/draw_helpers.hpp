@@ -56,7 +56,10 @@ inline void draw_item_graph(const Factory& factory,
     ImPlot::PopStyleColor();
 }
 
-inline void draw_factory_inputs(const Factory& factory, const Factory::Cache& cache) {
+/// Returns the input to delete, if any
+inline std::optional<Uid> draw_factory_inputs(const Factory& factory, const Factory::Cache& cache) {
+    std::optional<Uid> to_delete;
+
     for (auto& input_uid : cache.inputs()) {
         const auto& item = factory.items.at(input_uid);
         imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar,
@@ -66,6 +69,15 @@ inline void draw_factory_inputs(const Factory& factory, const Factory::Cache& ca
         imnodes::BeginNode(input_uid.value);
 
         imnodes::BeginNodeTitleBar();
+        if (!cache.item_nodes().contains(input_uid) ||
+            cache.item_nodes().at(input_uid).inputs.empty()) {
+            if (ImGui::CloseButton(ImGui::GetID("delete"), ImVec2{ImGui::GetCursorPosX() + 3,
+                                                                  ImGui::GetCursorPosY() + 45})) {
+                to_delete = input_uid;
+            }
+            ImGui::Dummy(ImVec2{10, 0});
+            ImGui::SameLine();
+        }
         ImGui::TextUnformatted("Input");
         imnodes::EndNodeTitleBar();
 
@@ -77,6 +89,8 @@ inline void draw_factory_inputs(const Factory& factory, const Factory::Cache& ca
 
         imnodes::PopColorStyle();
     }
+
+    return to_delete;
 }
 
 inline void draw_factory_machines(const Factory& factory,
@@ -127,18 +141,30 @@ inline void draw_factory_machines(const Factory& factory,
     }
 }
 
-inline void draw_factory_outputs(const Factory& factory, const Factory::Cache& cache) {
-    for (auto& output : cache.outputs()) {
-        const auto& item = factory.items.at(output);
+/// Returns the input to delete, if any
+inline std::optional<Uid> draw_factory_outputs(const Factory& factory, const Factory::Cache& cache) {
+    std::optional<Uid> to_delete;
+
+    for (auto& output_uid : cache.outputs()) {
+        const auto& item = factory.items.at(output_uid);
         imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar,
-                                0xff + ((output.value * 50) % 0xFF << 8) |
-                                    ((output.value * 186) % 0xFF << 16) |
-                                    ((output.value * 67) % 0xFF << 24));
-        imnodes::BeginNode(output.value);
+                                0xff + ((output_uid.value * 50) % 0xFF << 8) |
+                                    ((output_uid.value * 186) % 0xFF << 16) |
+                                    ((output_uid.value * 67) % 0xFF << 24));
+        imnodes::BeginNode(output_uid.value);
 
         imnodes::BeginNodeTitleBar();
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0, 0, 0, 0));
+        if (!cache.item_nodes().contains(output_uid) ||
+            cache.item_nodes().at(output_uid).outputs.empty()) {
+            if (ImGui::CloseButton(ImGui::GetID("delete"), ImVec2{ImGui::GetCursorPosX() + 3,
+                                                                  ImGui::GetCursorPosY() + 45})) {
+                to_delete = output_uid;
+            }
+            ImGui::Dummy(ImVec2{10, 0});
+            ImGui::SameLine();
+        }
         bool expand_graph;
         if ((expand_graph = ImGui::TreeNode("Output"))) {
             ImGui::TreePop();
@@ -148,13 +174,15 @@ inline void draw_factory_outputs(const Factory& factory, const Factory::Cache& c
         imnodes::EndNodeTitleBar();
 
         imnodes::BeginInputAttribute(item.attribute_uid.value);
-        draw_item_graph(factory, cache, output, expand_graph);
+        draw_item_graph(factory, cache, output_uid, expand_graph);
         imnodes::EndInputAttribute();
 
         imnodes::EndNode();
 
         imnodes::PopColorStyle();
     }
+
+    return to_delete;
 }
 
 inline void

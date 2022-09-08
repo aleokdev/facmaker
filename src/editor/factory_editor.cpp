@@ -88,9 +88,15 @@ void FactoryEditor::update_processing_graph() {
     static std::optional<ImVec2> editor_node_start_pos;
     auto machine_to_erase = factory.machines.cend();
 
-    draw_factory_inputs(factory, cache.factory_cache);
+    if (const auto input_to_delete = draw_factory_inputs(factory, cache.factory_cache)) {
+        factory.items.erase(*input_to_delete);
+        regenerate_cache();
+    }
     draw_factory_machines(factory, cache.factory_cache, machine_to_erase);
-    draw_factory_outputs(factory, cache.factory_cache);
+    if (const auto output_to_delete = draw_factory_outputs(factory, cache.factory_cache)) {
+        factory.items.erase(*output_to_delete);
+        regenerate_cache();
+    }
     draw_factory_links(factory, cache.factory_cache, uid_pool);
 
     if (new_machine) {
