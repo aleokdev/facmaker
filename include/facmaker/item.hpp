@@ -9,7 +9,7 @@
 namespace fmk {
 
 struct Item {
-    enum class NodeType { Input, Output, Internal } type = NodeType::Internal;
+    enum class NodeType : int { Input, Output, Internal } type = NodeType::Internal;
     int starting_quantity = 0;
     std::string name;
     /// The ID of the output/input attribute of the item's node (Only relevant if it is an input or

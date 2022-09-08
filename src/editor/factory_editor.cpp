@@ -136,7 +136,48 @@ void FactoryEditor::update_processing_graph() {
         ImGui::EndPopup();
     }
 
-    if (ImGui::Begin("Factory Debug")) {
+    if (ImGui::Begin("Item List")) {
+        static auto flags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable |
+                            ImGuiTableFlags_Hideable | ImGuiTableFlags_BordersOuter |
+                            ImGuiTableFlags_BordersV | ImGuiTableFlags_SizingStretchProp |
+                            ImGuiTableFlags_RowBg;
+
+        if (ImGui::BeginTable("item_table", 3, flags)) {
+            ImGui::TableSetupColumn("Name");
+            ImGui::TableSetupColumn("Type");
+            ImGui::TableSetupColumn("Starting Quantity");
+            ImGui::TableHeadersRow();
+            for (const auto& [_, item] : factory.items) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Text(item.name.data());
+                ImGui::TableNextColumn();
+                switch (item.type) {
+                    case Item::NodeType::Input: ImGui::Text("Input"); break;
+                    case Item::NodeType::Output: ImGui::Text("Output"); break;
+                    case Item::NodeType::Internal: ImGui::Text("Internal"); break;
+                }
+                ImGui::TableNextColumn();
+                ImGui::Text("%i", item.starting_quantity);
+            }
+            ImGui::EndTable();
+        }
+
+        static char name[50];
+        static int type;
+        static int starting_quantity;
+        ImGui::InputText("Name", name, sizeof(name));
+        ImGui::Combo("Type", static_cast<int*>(&type), "Input\0Output\0Internal");
+        ImGui::InputInt("Starting Quantity", &starting_quantity);
+        if (ImGui::Button("Create new item")) {
+            factory.items[uid_pool.generate()] = Item{
+                static_cast<Item::NodeType>(type),
+                starting_quantity,
+                name,
+            };
+            regenerate_cache();
+        }
+
         ImGui::Text("Inputs");
         for (const auto& input : cache.factory_cache.inputs()) {
             ImGui::TextDisabled("%s", factory.items.at(input).name.c_str());
