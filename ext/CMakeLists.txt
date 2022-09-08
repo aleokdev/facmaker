@@ -45,4 +45,8 @@ target_include_directories(implot PUBLIC
         )
 target_link_libraries(implot PUBLIC imgui)
 
-target_link_libraries(ext INTERFACE glfw imgui GL glad imnodes boost_json implot fmt plog portable_file_dialogs)
+if (UNIX)
+    target_link_libraries(ext INTERFACE GL)
+endif (UNIX)
+
+target_link_libraries(ext INTERFACE glfw imgui glad imnodes boost_json implot fmt plog portable_file_dialogs)
