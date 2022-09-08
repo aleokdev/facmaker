@@ -330,7 +330,7 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
                                     parsed_items[item_uid].type = Item::NodeType::Internal;
                                 }
                             }
-                            if (auto quantity = item->at("type").if_int64()) {
+                            if (auto quantity = item->at("start_with").if_int64()) {
                                 parsed_items[item_uid].starting_quantity =
                                     static_cast<int>(*quantity);
                             }
