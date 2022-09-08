@@ -37,12 +37,13 @@ inline void draw_item_graph(const Factory& factory,
     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.5f);
     ImPlot::PushStyleVar(ImPlotStyleVar_LabelPadding, ImVec2(0.75f, 1));
     ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(expanded ? 10 : 0, 5));
-    if (ImPlot::BeginPlot(
-            item.name.c_str(), "Tick", "Items", expanded ? ImVec2(400, 200) : ImVec2(100, 50),
-            (expanded ? 0 : ImPlotFlags_NoChild) | ImPlotFlags_CanvasOnly ^ ImPlotFlags_NoTitle |
-                ImPlotFlags_AntiAliased,
-            expanded ? 0 : ImPlotAxisFlags_NoDecorations,
-            (expanded ? 0 : ImPlotAxisFlags_NoLabel) | ImPlotAxisFlags_AutoFit)) {
+    if (ImPlot::BeginPlot(item.name.c_str(), "Tick", "Items",
+                          expanded ? ImVec2(400, 200) : ImVec2(100, 50),
+                          (expanded ? 0 : ImPlotFlags_NoChild) |
+                              ImPlotFlags_CanvasOnly ^ (expanded ? ImPlotFlags_NoTitle : 0) |
+                              ImPlotFlags_AntiAliased,
+                          expanded ? 0 : ImPlotAxisFlags_NoDecorations,
+                          (expanded ? 0 : ImPlotAxisFlags_NoLabel) | ImPlotAxisFlags_AutoFit)) {
         auto plot_size = plot.container().size();
 
         // Shift the X axis one value to the left so that the total tick count equals the
@@ -62,6 +63,36 @@ inline void draw_item_graph(const Factory& factory,
     ImPlot::PopStyleColor();
 }
 
+bool delete_button(Uid id) {
+    bool result = ImGui::CloseButton(ImGui::GetID(fmt::format("delete##{}", id.value).c_str()),
+                                     ImGui::GetCursorPos());
+
+    ImGui::Dummy(ImVec2{15, 0});
+
+    return result;
+}
+
+void draw_pin() {
+    const auto line_height = ImGui::GetTextLineHeight();
+    ImVec2 size{line_height, line_height};
+
+    auto rect = ImRect(ImGui::GetCursorScreenPos(), ImGui::GetCursorScreenPos() + ImVec2(20., 20.));
+    auto rect_w = rect.Max.x - rect.Min.x;
+    auto rect_center_x = (rect.Min.x + rect.Max.x) * 0.5f;
+    auto rect_center_y = (rect.Min.y + rect.Max.y) * 0.5f;
+    auto rect_center = ImVec2(rect_center_x, rect_center_y);
+    const auto r = 0.607f * rect_w / 2.0f;
+    const auto c = rect_center;
+    auto drawList = ImGui::GetWindowDrawList();
+
+    drawList->PathLineTo(c + ImVec2(0, -r));
+    drawList->PathLineTo(c + ImVec2(r, 0));
+    drawList->PathLineTo(c + ImVec2(0, r));
+    drawList->PathLineTo(c + ImVec2(-r, 0));
+    drawList->PathFillConvex(0xFFFFFFFF);
+    ImGui::Dummy(size);
+}
+
 /// Returns the input to delete, if any
 inline std::optional<Uid> draw_factory_inputs(const Factory& factory, const Factory::Cache& cache) {
     std::optional<Uid> to_delete;
@@ -78,41 +109,24 @@ inline std::optional<Uid> draw_factory_inputs(const Factory& factory, const Fact
 
         if (!cache.item_nodes().contains(input_uid) ||
             cache.item_nodes().at(input_uid).inputs.empty()) {
-            if (ImGui::CloseButton(ImGui::GetID("delete"), ImVec2{ImGui::GetCursorPosX() + 3,
-                                                                  ImGui::GetCursorPosY() + 45})) {
+            if (delete_button(input_uid)) {
                 to_delete = input_uid;
             }
-            ImGui::Dummy(ImVec2{10, 0});
             ImGui::SameLine();
         }
         ImGui::TextUnformatted("Input");
 
         ed::BeginPin(item.attribute_uid.value, ed::PinKind::Output);
         ImGui::Text("%s", item.name.c_str());
+        ImGui::SameLine();
+        draw_pin();
+        ed::PinRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
         ed::EndPin();
 
         ed::EndNode();
     }
 
     return to_delete;
-}
-
-void draw_pin(ImVec2 size) {
-    auto rect = ImRect(ImGui::GetCursorScreenPos(), ImGui::GetCursorScreenPos() + ImVec2(20., 20.));
-    auto rect_w = rect.Max.x - rect.Min.x;
-    auto rect_center_x = (rect.Min.x + rect.Max.x) * 0.5f;
-    auto rect_center_y = (rect.Min.y + rect.Max.y) * 0.5f;
-    auto rect_center = ImVec2(rect_center_x, rect_center_y);
-    const auto r = 0.607f * rect_w / 2.0f;
-    const auto c = rect_center;
-    auto drawList = ImGui::GetWindowDrawList();
-
-    drawList->PathLineTo(c + ImVec2(0, -r));
-    drawList->PathLineTo(c + ImVec2(r, 0));
-    drawList->PathLineTo(c + ImVec2(0, r));
-    drawList->PathLineTo(c + ImVec2(-r, 0));
-    drawList->PathFillConvex(0xFFFFFFFF);
-    ImGui::Dummy(size);
 }
 
 inline void draw_factory_machines(const Factory& factory,
@@ -131,13 +145,11 @@ inline void draw_factory_machines(const Factory& factory,
                                     ((machine_uid.value * 67) % 0xFF << 24)); */
         ed::BeginNode(machine_uid.value);
 
-        if (ImGui::CloseButton(ImGui::GetID("delete"),
-                               ImVec2{ImGui::GetCursorPosX(), ImGui::GetCursorPosY()})) {
+        if (delete_button(machine_uid)) {
             out_machine_to_erase = machine_it;
         }
-        ImGui::Dummy(ImVec2{10, 0});
         ImGui::SameLine();
-        if (ImGui::Button("Edit")) {
+        if (ImGui::Button(fmt::format("Edit##{}", machine_uid.value).c_str())) {
             out_machine_to_edit = machine_it;
         }
         ImGui::SameLine();
@@ -147,7 +159,7 @@ inline void draw_factory_machines(const Factory& factory,
             const auto& item = factory.items.at(input.item);
             ed::BeginPin(input.uid.value, ed::PinKind::Input);
             {
-                draw_pin(ImVec2(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()));
+                draw_pin();
                 ed::PinRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
                 ImGui::SameLine();
                 ImGui::Text("%i %s", input.quantity, item.name.c_str());
@@ -161,7 +173,7 @@ inline void draw_factory_machines(const Factory& factory,
             {
                 ImGui::Text("%i %s", output.quantity, item.name.c_str());
                 ImGui::SameLine();
-                draw_pin(ImVec2(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()));
+                draw_pin();
                 ed::PinRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
             }
             ed::EndPin();
@@ -191,22 +203,20 @@ inline std::optional<Uid> draw_factory_outputs(const Factory& factory,
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0, 0, 0, 0));
         if (!cache.item_nodes().contains(output_uid) ||
             cache.item_nodes().at(output_uid).outputs.empty()) {
-            if (ImGui::CloseButton(ImGui::GetID("delete"), ImVec2{ImGui::GetCursorPosX() + 3,
-                                                                  ImGui::GetCursorPosY() + 45})) {
+            if (delete_button(output_uid)) {
                 to_delete = output_uid;
             }
-            ImGui::Dummy(ImVec2{10, 0});
             ImGui::SameLine();
         }
-        bool expand_graph;
-        if ((expand_graph = ImGui::TreeNode("Output"))) {
-            ImGui::TreePop();
-        }
-        ImGui::PopStyleColor();
-        ImGui::PopStyleColor();
+        ImGui::Text("Output");
+        ImGui::PopStyleColor(2);
 
         ed::BeginPin(item.attribute_uid.value, ed::PinKind::Input);
-        draw_item_graph(factory, cache, output_uid, expand_graph);
+        draw_pin();
+        ed::PinRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+        ImGui::SameLine();
+        ImGui::Text(item.name.c_str());
+        draw_item_graph(factory, cache, output_uid, false);
         ed::EndPin();
 
         ed::EndNode();

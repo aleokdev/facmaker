@@ -37,8 +37,6 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
-
         editor.draw();
 
         ImGui::Render();

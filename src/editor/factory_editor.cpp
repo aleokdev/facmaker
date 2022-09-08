@@ -39,10 +39,9 @@ void FactoryEditor::draw() {
 }
 
 void FactoryEditor::update_processing_graph() {
-    ImGui::SetNextWindowSize(ImVec2{500, 500}, ImGuiCond_Appearing);
-    ImGui::Begin("Factory Display", nullptr, ImGuiWindowFlags_MenuBar);
+    ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
 
-    if (ImGui::BeginMenuBar()) {
+    if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open...")) {
                 const auto selection = pfd::open_file("Open Factory").result();
@@ -72,7 +71,7 @@ void FactoryEditor::update_processing_graph() {
             ImGui::MenuItem("Show ImPlot Demo Window", nullptr, &show_implot_demo_window);
             ImGui::EndMenu();
         }
-        ImGui::EndMenuBar();
+        ImGui::EndMainMenuBar();
     }
 
     if (show_imgui_demo_window) {
@@ -82,77 +81,54 @@ void FactoryEditor::update_processing_graph() {
         ImPlot::ShowDemoWindow(&show_implot_demo_window);
     }
 
-    ed::SetCurrentEditor(node_editor_ctx);
-    ed::Begin("Factory Node Editor");
-    ImVec2 editor_pos = ImGui::GetCursorScreenPos();
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    if (ImGui::Begin("Node Editor")) {
+        ed::SetCurrentEditor(node_editor_ctx);
+        ed::Begin("Factory Node Editor");
+        ImVec2 editor_pos = ImGui::GetCursorScreenPos();
 
-    static std::optional<ImVec2> editor_node_start_pos;
-    auto machine_to_erase = factory.machines.cend();
-    auto machine_to_edit = factory.machines.cend();
+        static std::optional<ImVec2> editor_node_start_pos;
+        auto machine_to_erase = factory.machines.cend();
+        auto machine_to_edit = factory.machines.cend();
 
-    if (const auto input_to_delete = draw_factory_inputs(factory, cache.factory_cache)) {
-        factory.items.erase(*input_to_delete);
-        regenerate_cache();
-    }
-    draw_factory_machines(factory, cache.factory_cache, machine_to_erase, machine_to_edit);
-    if (const auto output_to_delete = draw_factory_outputs(factory, cache.factory_cache)) {
-        factory.items.erase(*output_to_delete);
-        regenerate_cache();
-    }
-    draw_factory_links(factory, cache.factory_cache, uid_pool);
-
-    if (new_machine) {
-        if (draw_machine_editor(factory, *new_machine, uid_pool, editor_node_start_pos)) {
-            factory.machines[new_machine->machine_uid] = std::move(new_machine->machine);
-            new_machine.reset();
+        if (const auto input_to_delete = draw_factory_inputs(factory, cache.factory_cache)) {
+            factory.items.erase(*input_to_delete);
             regenerate_cache();
         }
-        editor_node_start_pos.reset();
-    } else if (machine_to_erase != factory.machines.end()) {
-        factory.machines.erase(machine_to_erase);
+        draw_factory_machines(factory, cache.factory_cache, machine_to_erase, machine_to_edit);
+        if (const auto output_to_delete = draw_factory_outputs(factory, cache.factory_cache)) {
+            factory.items.erase(*output_to_delete);
+            regenerate_cache();
+        }
+        draw_factory_links(factory, cache.factory_cache, uid_pool);
 
-        regenerate_cache();
-    } else if (machine_to_edit != factory.machines.cend()) {
-        auto [uid, machine] = *machine_to_edit;
-
-        factory.machines.erase(machine_to_edit);
-        regenerate_cache();
-
-        new_machine = MachineEditor{machine, uid};
-    }
-
-    ed::End();
-    ed::SetCurrentEditor(nullptr);
-
-    /* TODO imnodes
-    if (int start_attr; imnodes::IsLinkDropped(&start_attr)) {
-        [&]() {
-            for (const auto& [machine_uid, machine] : factory.machines) {
-                for (const auto& input : machine.inputs) {
-                    if (start_attr == input.uid.value) {
-                        // Convert this machine's input item into an input!
-                        factory.items.at(input.item).type = Item::NodeType::Input;
-
-                        regenerate_cache();
-                        return;
-                    }
-                }
+        if (new_machine) {
+            if (draw_machine_editor(factory, *new_machine, uid_pool, editor_node_start_pos)) {
+                factory.machines[new_machine->machine_uid] = std::move(new_machine->machine);
+                new_machine.reset();
+                regenerate_cache();
             }
+            editor_node_start_pos.reset();
+        } else if (machine_to_erase != factory.machines.end()) {
+            factory.machines.erase(machine_to_erase);
 
-            for (const auto& [machine_uid, machine] : factory.machines) {
-                for (const auto& output : machine.outputs) {
-                    if (start_attr == output.uid.value) {
-                        // Convert this machine's output item into an output!
-                        factory.items.at(output.item).type = Item::NodeType::Output;
+            regenerate_cache();
+        } else if (machine_to_edit != factory.machines.cend()) {
+            auto [uid, machine] = *machine_to_edit;
 
-                        regenerate_cache();
-                        return;
-                    }
-                }
-            }
-        }();
+            factory.machines.erase(machine_to_edit);
+            regenerate_cache();
+
+            new_machine = MachineEditor{machine, uid};
+        }
+
+        ed::End();
+        ed::SetCurrentEditor(nullptr);
+        ImGui::End();
     }
-     */
+    ImGui::PopStyleVar(3);
 
     /* TODO
     if (ImGui::BeginPopupContextItem("_ngc")) {
@@ -163,8 +139,8 @@ void FactoryEditor::update_processing_graph() {
                 MachineEditor{Machine{std::move(new_machine_name)}, uid_pool.generate()});
 
             editor_node_start_pos =
-                ImVec2{ImGui::GetMousePos().x - editor_pos.x - imnodes::EditorContextGetPanning().x,
-                       ImGui::GetMousePos().y - editor_pos.y -
+                ImVec2{ImGui::GetMousePos().x - editor_pos.x -
+    imnodes::EditorContextGetPanning().x, ImGui::GetMousePos().y - editor_pos.y -
     imnodes::EditorContextGetPanning().y};
         }
         ImGui::EndPopup();
@@ -262,8 +238,6 @@ void FactoryEditor::update_processing_graph() {
 
         ImGui::End();
     }
-
-    ImGui::End();
 }
 
 void FactoryEditor::update_item_statistics() {
