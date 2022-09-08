@@ -34,15 +34,6 @@ target_include_directories(imnodes PUBLIC
         )
 target_link_libraries(imnodes PUBLIC imgui)
 
-# imtext
-add_library(imtext STATIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/ImGuiColorTextEdit/TextEditor.cpp"
-        )
-target_include_directories(imtext PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/ImGuiColorTextEdit"
-        )
-target_link_libraries(imtext PUBLIC imgui)
-
 # implot
 add_library(implot STATIC
         "${CMAKE_CURRENT_SOURCE_DIR}/implot/implot.cpp"
@@ -54,4 +45,4 @@ target_include_directories(implot PUBLIC
         )
 target_link_libraries(implot PUBLIC imgui)
 
-target_link_libraries(ext INTERFACE glfw imgui GL glad imnodes imtext boost_json implot fmt plog portable_file_dialogs)
+target_link_libraries(ext INTERFACE glfw imgui GL glad imnodes boost_json implot fmt plog portable_file_dialogs)
