@@ -37,6 +37,17 @@ target_include_directories(imnodes PUBLIC
         )
 target_link_libraries(imnodes PUBLIC imgui)
 
+# imgui-node-editor
+add_library(imgui-node-editor STATIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/imgui-node-editor/imgui_canvas.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/imgui-node-editor/imgui_canvas.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/imgui-node-editor/imgui_node_editor.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/imgui-node-editor/imgui_node_editor_api.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/imgui-node-editor/crude_json.cpp"
+        )
+target_include_directories(imgui-node-editor PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/imgui-node-editor")
+target_link_libraries(imgui-node-editor PRIVATE imgui)
+
 # implot
 add_library(implot STATIC
         "${CMAKE_CURRENT_SOURCE_DIR}/implot/implot.cpp"
@@ -52,4 +63,4 @@ if (UNIX)
     target_link_libraries(ext INTERFACE GL)
 endif (UNIX)
 
-target_link_libraries(ext INTERFACE glfw imgui glad imnodes boost_json implot fmt plog portable_file_dialogs)
+target_link_libraries(ext INTERFACE glfw imgui glad imnodes boost_json implot fmt plog portable_file_dialogs imgui-node-editor)

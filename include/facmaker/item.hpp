@@ -14,7 +14,7 @@ struct Item {
     std::string name;
     /// The ID of the output/input attribute of the item's node (Only relevant if it is an input or
     /// output).
-    Uid attribute_uid{std::numeric_limits<int>::min()};
+    Uid attribute_uid{Uid::INVALID_VALUE};
 };
 
 struct ItemStream {

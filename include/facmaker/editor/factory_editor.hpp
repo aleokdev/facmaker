@@ -1,17 +1,13 @@
 #pragma once
 
 #include <imgui.h>
+#include <imgui_node_editor.h>
 #include <optional>
 #include <utility>
 #include <vector>
 
 #include "factory.hpp"
 
-namespace imnodes {
-
-struct EditorContext;
-
-}
 namespace fmk {
 
 class FactoryEditor {
@@ -43,7 +39,7 @@ private:
 
     Factory factory;
     UidPool uid_pool;
-    imnodes::EditorContext* imnodes_ctx;
+    ax::NodeEditor::EditorContext* node_editor_ctx;
     std::optional<MachineEditor> new_machine;
     bool show_imgui_demo_window = false;
     bool show_implot_demo_window = false;

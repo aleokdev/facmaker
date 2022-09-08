@@ -5,7 +5,7 @@
 #include <fmt/core.h>
 #include <fstream>
 #include <imgui.h>
-#include <imnodes.h>
+#include <imgui_node_editor.h>
 #include <implot.h>
 #include <iomanip>
 #include <iostream>
@@ -18,20 +18,20 @@
 #include "pfd/pfd.hpp"
 
 namespace json = boost::json;
+namespace ed = ax::NodeEditor;
 
 namespace fmk {
 
 FactoryEditor::FactoryEditor() :
     factory{.items = {}, .machines = {}}, uid_pool(Uid(Uid::INVALID_VALUE + 1)) {
-    imnodes_ctx = imnodes::EditorContextCreate();
+    node_editor_ctx = ed::CreateEditor();
     auto input_stream = std::ifstream("assets/starting_program.json");
     parse_factory_json(input_stream);
 
-    imnodes::EditorContextSet(imnodes_ctx);
-    imnodes::EditorContextResetPanning(ImVec2{50, 50});
+    ed::SetCurrentEditor(node_editor_ctx);
 }
 
-FactoryEditor::~FactoryEditor() { imnodes::EditorContextFree(imnodes_ctx); }
+FactoryEditor::~FactoryEditor() { ed::DestroyEditor(node_editor_ctx); }
 
 void FactoryEditor::draw() {
     update_processing_graph();
@@ -82,7 +82,8 @@ void FactoryEditor::update_processing_graph() {
         ImPlot::ShowDemoWindow(&show_implot_demo_window);
     }
 
-    imnodes::BeginNodeEditor();
+    ed::SetCurrentEditor(node_editor_ctx);
+    ed::Begin("Factory Node Editor");
     ImVec2 editor_pos = ImGui::GetCursorScreenPos();
 
     static std::optional<ImVec2> editor_node_start_pos;
@@ -120,8 +121,10 @@ void FactoryEditor::update_processing_graph() {
         new_machine = MachineEditor{machine, uid};
     }
 
-    imnodes::EndNodeEditor();
+    ed::End();
+    ed::SetCurrentEditor(nullptr);
 
+    /* TODO imnodes
     if (int start_attr; imnodes::IsLinkDropped(&start_attr)) {
         [&]() {
             for (const auto& [machine_uid, machine] : factory.machines) {
@@ -149,7 +152,9 @@ void FactoryEditor::update_processing_graph() {
             }
         }();
     }
+     */
 
+    /* TODO
     if (ImGui::BeginPopupContextItem("_ngc")) {
         if (ImGui::MenuItem("New Machine")) {
             std::string new_machine_name = "Machine";
@@ -157,12 +162,14 @@ void FactoryEditor::update_processing_graph() {
             new_machine.emplace(
                 MachineEditor{Machine{std::move(new_machine_name)}, uid_pool.generate()});
 
-            editor_node_start_pos = ImVec2{
-                ImGui::GetMousePos().x - editor_pos.x - imnodes::EditorContextGetPanning().x,
-                ImGui::GetMousePos().y - editor_pos.y - imnodes::EditorContextGetPanning().y};
+            editor_node_start_pos =
+                ImVec2{ImGui::GetMousePos().x - editor_pos.x - imnodes::EditorContextGetPanning().x,
+                       ImGui::GetMousePos().y - editor_pos.y -
+    imnodes::EditorContextGetPanning().y};
         }
         ImGui::EndPopup();
     }
+     */
 
     if (ImGui::Begin("Item List")) {
         static auto flags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable |
@@ -278,13 +285,12 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
     bool had_errors = false;
 
     // We set the editor context to be able to set positions
-    imnodes::EditorContextSet(imnodes_ctx);
+    ed::SetCurrentEditor(node_editor_ctx);
 
     auto parse_xy = [](json::object const& object, Uid uid) {
         if (auto x_val = object.if_contains("x")) {
-            imnodes::SetNodeGridSpacePos(uid.value,
-                                         {static_cast<float>(x_val->as_double()),
-                                          static_cast<float>(object.at("y").as_double())});
+            ed::SetNodePosition(uid.value, {static_cast<float>(x_val->as_double()),
+                                            static_cast<float>(object.at("y").as_double())});
         }
     };
 
@@ -505,6 +511,7 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
 void FactoryEditor::output_factory_json(std::ostream& out) const {
     out << "{";
 
+    ed::SetCurrentEditor(node_editor_ctx);
     // Items
     {
         out << "\"items\":{";
@@ -525,8 +532,7 @@ void FactoryEditor::output_factory_json(std::ostream& out) const {
             }
             out << "\",\"start_with\":" << item.starting_quantity;
             if (write_xy) {
-                imnodes::EditorContextSet(imnodes_ctx);
-                const auto [x, y] = imnodes::GetNodeGridSpacePos(item_uid.value);
+                const auto [x, y] = ed::GetNodePosition(item_uid.value);
                 out << ",\"x\":" << std::fixed << std::setprecision(1) << x << ",\"y\":" << y
                     << "}";
             } else {
@@ -573,7 +579,7 @@ void FactoryEditor::output_factory_json(std::ostream& out) const {
                 }
                 out << "},";
                 out << "\"time\":" << machine.op_time.count() << ",";
-                const auto [x, y] = imnodes::GetNodeGridSpacePos(machine_uid.value);
+                const auto [x, y] = ed::GetNodePosition(machine_uid.value);
                 out << "\"x\":" << std::fixed << std::setprecision(1) << x << ",\"y\":" << y;
             }
             out << "}";

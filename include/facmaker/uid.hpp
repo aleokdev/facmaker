@@ -5,13 +5,12 @@
 namespace fmk {
 
 struct Uid {
-    static constexpr int INVALID_VALUE = std::numeric_limits<int>::min();
+    static constexpr int INVALID_VALUE = 0;
 
-    explicit constexpr Uid(int val) : value(val) {}
+    explicit constexpr Uid(unsigned int val) : value(val) {}
     Uid() = delete;
 
-    // This is currently limited by imnodes
-    int value;
+    unsigned int value;
 
     bool operator==(Uid const& other) const { return value == other.value; }
 };
@@ -26,7 +25,7 @@ public:
     [[nodiscard]] Uid get_next_uid() const { return next_uid; }
 
 private:
-    Uid next_uid{std::numeric_limits<int>::min()};
+    Uid next_uid{1};
 };
 
 } // namespace fmk
