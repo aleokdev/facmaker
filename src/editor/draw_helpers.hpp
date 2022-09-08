@@ -283,10 +283,10 @@ inline bool draw_machine_editor(const Factory& factory,
 
     const auto& draw_io_manip = [&factory](ItemStream& obj) -> bool {
         ImGui::SetNextItemWidth(40);
-        ImGui::DragInt("##o_quantity", &obj.quantity, 1.f, 1, 99999);
+        ImGui::DragInt("##quantity", &obj.quantity, 1.f, 1, 99999);
         ImGui::SameLine();
         ImGui::SetNextItemWidth(100);
-        if (ImGui::BeginCombo("##o_item", factory.items.at(obj.item).name.c_str())) {
+        if (ImGui::BeginCombo("##item", factory.items.at(obj.item).name.c_str())) {
             for (auto& [item_uid, item] : factory.items) {
                 const bool is_selected = obj.item == item_uid;
                 if (ImGui::Selectable(item.name.c_str(), is_selected)) {
@@ -311,7 +311,9 @@ inline bool draw_machine_editor(const Factory& factory,
         std::remove_if(editor.machine.inputs.begin(), editor.machine.inputs.end(),
                        [&draw_io_manip, &uid_pool](ItemStream& input) -> bool {
                            ed::BeginPin(input.uid.value, ed::PinKind::Input);
+                           ImGui::PushID(input.uid.value);
                            bool remove = draw_io_manip(input);
+                           ImGui::PopID();
                            ed::EndPin();
                            return remove;
                        }),
@@ -328,7 +330,9 @@ inline bool draw_machine_editor(const Factory& factory,
         std::remove_if(editor.machine.outputs.begin(), editor.machine.outputs.end(),
                        [&draw_io_manip, &uid_pool](ItemStream& output) -> bool {
                            ed::BeginPin(output.uid.value, ed::PinKind::Output);
+                           ImGui::PushID(output.uid.value);
                            bool remove = draw_io_manip(output);
+                           ImGui::PopID();
                            ed::EndPin();
                            return remove;
                        }),
