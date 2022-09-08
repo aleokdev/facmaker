@@ -208,10 +208,10 @@ inline bool draw_machine_editor(const Factory& factory,
     imnodes::EndNodeTitleBar();
 
     const auto& draw_io_manip = [&factory](ItemStream& obj) -> bool {
-        ImGui::SetNextItemWidth(20);
-        ImGui::DragInt("##o_quantity", &obj.quantity, 1.f, 1, 99);
+        ImGui::SetNextItemWidth(40);
+        ImGui::DragInt("##o_quantity", &obj.quantity, 1.f, 1, 99999);
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(50);
+        ImGui::SetNextItemWidth(100);
         if (ImGui::BeginCombo("##o_item", factory.items.at(obj.item).name.c_str())) {
             for (auto& [item_uid, item] : factory.items) {
                 const bool is_selected = obj.item == item_uid;
@@ -232,6 +232,7 @@ inline bool draw_machine_editor(const Factory& factory,
     };
 
     // Draw inputs
+    ImGui::TextDisabled("Inputs");
     editor.machine.inputs.erase(
         std::remove_if(editor.machine.inputs.begin(), editor.machine.inputs.end(),
                        [&draw_io_manip, &uid_pool](ItemStream& input) -> bool {
@@ -247,19 +248,18 @@ inline bool draw_machine_editor(const Factory& factory,
     }
 
     // Draw outputs
+    ImGui::Indent(50);
+    ImGui::TextDisabled("Outputs");
     editor.machine.outputs.erase(
         std::remove_if(editor.machine.outputs.begin(), editor.machine.outputs.end(),
                        [&draw_io_manip, &uid_pool](ItemStream& output) -> bool {
                            imnodes::BeginOutputAttribute(output.uid.value);
-                           ImGui::Indent(40);
                            bool remove = draw_io_manip(output);
-                           ImGui::Unindent();
                            imnodes::EndOutputAttribute();
                            return remove;
                        }),
         editor.machine.outputs.end());
 
-    ImGui::Indent(40);
     if (ImGui::SmallButton("+##add_output")) {
         editor.machine.outputs.emplace_back(
             ItemStream{factory.items.begin()->first, 1, uid_pool.generate()});
