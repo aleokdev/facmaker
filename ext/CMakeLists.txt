@@ -22,7 +22,10 @@ add_library(imgui STATIC ${IMGUI_SOURCES})
 target_include_directories(imgui PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/imgui"
         )
-target_link_libraries(imgui PUBLIC glfw GL glad)
+if (UNIX)
+    target_link_libraries(imgui PUBLIC GL)
+endif (UNIX)
+target_link_libraries(imgui PUBLIC glfw glad)
 target_compile_definitions(imgui PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD)
 
 # imnodes
