@@ -142,7 +142,8 @@ inline void draw_factory_machines(const Factory& factory,
 }
 
 /// Returns the input to delete, if any
-inline std::optional<Uid> draw_factory_outputs(const Factory& factory, const Factory::Cache& cache) {
+inline std::optional<Uid> draw_factory_outputs(const Factory& factory,
+                                               const Factory::Cache& cache) {
     std::optional<Uid> to_delete;
 
     for (auto& output_uid : cache.outputs()) {
@@ -231,8 +232,7 @@ inline bool draw_machine_editor(const Factory& factory,
         imnodes::SetNodeGridSpacePos(editor.machine_uid.value, *node_pos);
 
     imnodes::BeginNodeTitleBar();
-    ImGui::SelectableInput("##name", false, editor.machine.name.data(),
-                           editor.machine.name.capacity());
+    ImGui::SelectableInput("##name", false, &editor.machine.name);
     imnodes::EndNodeTitleBar();
 
     const auto& draw_io_manip = [&factory](ItemStream& obj) -> bool {
