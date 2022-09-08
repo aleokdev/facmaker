@@ -162,13 +162,27 @@ void FactoryEditor::update_processing_graph() {
                             ImGuiTableFlags_BordersV | ImGuiTableFlags_SizingStretchProp |
                             ImGuiTableFlags_RowBg;
 
-        if (ImGui::BeginTable("item_table", 3, flags)) {
+        static Uid item_being_edited(Uid::INVALID_VALUE);
+        static std::string item_edit_name;
+        static Item::NodeType item_edit_type;
+        static int item_edit_starting_quantity;
+
+        if (ImGui::BeginTable("item_table", 4, flags)) {
+            ImGui::TableSetupColumn("Edit");
             ImGui::TableSetupColumn("Name");
             ImGui::TableSetupColumn("Type");
             ImGui::TableSetupColumn("Starting Quantity");
             ImGui::TableHeadersRow();
-            for (const auto& [_, item] : factory.items) {
+            for (const auto& [item_uid, item] : factory.items) {
                 ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                if (ImGui::Button(fmt::format("Edit##{}", item_uid.value).c_str())) {
+                    item_being_edited = item_uid;
+                    item_edit_name = item.name;
+                    item_edit_type = item.type;
+                    item_edit_starting_quantity = item.starting_quantity;
+                    ImGui::OpenPopup("Edit Item");
+                }
                 ImGui::TableNextColumn();
                 ImGui::Text(item.name.data());
                 ImGui::TableNextColumn();
@@ -180,6 +194,30 @@ void FactoryEditor::update_processing_graph() {
                 ImGui::TableNextColumn();
                 ImGui::Text("%i", item.starting_quantity);
             }
+
+            if (ImGui::BeginPopup("Edit Item")) {
+                ImGui::InputText("Name", item_edit_name.data(), item_edit_name.capacity());
+                ImGui::Combo("Type", reinterpret_cast<int*>(&item_edit_type),
+                             "Input\0Output\0Internal");
+                ImGui::InputInt("Starting Quantity", &item_edit_starting_quantity);
+                if (ImGui::Button("Cancel")) {
+                    item_being_edited = Uid(Uid::INVALID_VALUE);
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Apply")) {
+                    auto& item = factory.items.at(item_being_edited);
+                    item.name = item_edit_name;
+                    item.type = item_edit_type;
+                    item.starting_quantity = item_edit_starting_quantity;
+
+                    item_being_edited = Uid(Uid::INVALID_VALUE);
+                    ImGui::CloseCurrentPopup();
+                    regenerate_cache();
+                }
+                ImGui::EndPopup();
+            }
+
             ImGui::EndTable();
         }
 
@@ -187,7 +225,7 @@ void FactoryEditor::update_processing_graph() {
         static int type;
         static int starting_quantity;
         ImGui::InputText("Name", name, sizeof(name));
-        ImGui::Combo("Type", static_cast<int*>(&type), "Input\0Output\0Internal");
+        ImGui::Combo("Type", &type, "Input\0Output\0Internal");
         ImGui::InputInt("Starting Quantity", &starting_quantity);
         if (ImGui::Button("Create new item")) {
             factory.items[uid_pool.generate()] = Item{
@@ -206,6 +244,7 @@ void FactoryEditor::update_processing_graph() {
         for (const auto& output : cache.factory_cache.outputs()) {
             ImGui::TextDisabled("%s", factory.items.at(output).name.c_str());
         }
+
         ImGui::End();
     }
 
