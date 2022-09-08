@@ -25,20 +25,21 @@ inline void draw_item_graph(const Factory& factory,
                             static_cast<double>(cache.ticks_simulated())};
         ImPlot::SetNextPlotTicksX(ticks_x, 3);
     }
-    {
-        double ticks_y[] = {0, static_cast<double>(plot.max_value()) / 2,
-                            static_cast<double>(plot.max_value())};
-        ImPlot::SetNextPlotTicksY(ticks_y, 3);
+    if (!expanded) {
+        double ticks_y[] = {0, static_cast<double>(plot.max_value())};
+        ImPlot::SetNextPlotTicksY(ticks_y, 2);
     }
 
     ImPlot::PushStyleColor(ImPlotCol_FrameBg, ImVec4(0, 0, 0, 0));
-    ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
+    ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.5f);
     ImPlot::PushStyleVar(ImPlotStyleVar_LabelPadding, ImVec2(0.75f, 1));
     ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(expanded ? 10 : 0, 5));
     if (ImPlot::BeginPlot(
             item.name.c_str(), "Tick", "Items", expanded ? ImVec2(400, 200) : ImVec2(100, 50),
-            (expanded ? 0 : ImPlotFlags_NoChild) | ImPlotFlags_CanvasOnly ^ ImPlotFlags_NoTitle,
-            expanded ? 0 : ImPlotAxisFlags_NoDecorations, expanded ? 0 : ImPlotAxisFlags_NoLabel)) {
+            (expanded ? 0 : ImPlotFlags_NoChild) | ImPlotFlags_CanvasOnly ^ ImPlotFlags_NoTitle |
+                ImPlotFlags_AntiAliased,
+            expanded ? 0 : ImPlotAxisFlags_NoDecorations,
+            (expanded ? 0 : ImPlotAxisFlags_NoLabel) | ImPlotAxisFlags_AutoFit)) {
         auto plot_size = plot.container().size();
 
         // Shift the X axis one value to the left so that the total tick count equals the
@@ -46,6 +47,8 @@ inline void draw_item_graph(const Factory& factory,
         std::vector<int> plot_x(plot_size);
         for (int i = 1; i <= plot_size; i++) { plot_x[i - 1] = i; }
 
+        ImPlot::PlotShaded(item.name.c_str(), plot_x.data(), plot.container().data(),
+                           static_cast<int>(plot_size));
         ImPlot::PlotStairs(item.name.c_str(), plot_x.data(), plot.container().data(),
                            static_cast<int>(plot_size));
 
