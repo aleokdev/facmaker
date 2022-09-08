@@ -87,12 +87,13 @@ void FactoryEditor::update_processing_graph() {
 
     static std::optional<ImVec2> editor_node_start_pos;
     auto machine_to_erase = factory.machines.cend();
+    auto machine_to_edit = factory.machines.cend();
 
     if (const auto input_to_delete = draw_factory_inputs(factory, cache.factory_cache)) {
         factory.items.erase(*input_to_delete);
         regenerate_cache();
     }
-    draw_factory_machines(factory, cache.factory_cache, machine_to_erase);
+    draw_factory_machines(factory, cache.factory_cache, machine_to_erase, machine_to_edit);
     if (const auto output_to_delete = draw_factory_outputs(factory, cache.factory_cache)) {
         factory.items.erase(*output_to_delete);
         regenerate_cache();
@@ -110,6 +111,13 @@ void FactoryEditor::update_processing_graph() {
         factory.machines.erase(machine_to_erase);
 
         regenerate_cache();
+    } else if (machine_to_edit != factory.machines.cend()) {
+        auto [uid, machine] = *machine_to_edit;
+
+        factory.machines.erase(machine_to_edit);
+        regenerate_cache();
+
+        new_machine = MachineEditor{machine, uid};
     }
 
     imnodes::EndNodeEditor();

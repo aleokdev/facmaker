@@ -98,7 +98,8 @@ inline std::optional<Uid> draw_factory_inputs(const Factory& factory, const Fact
 
 inline void draw_factory_machines(const Factory& factory,
                                   const Factory::Cache& _cache,
-                                  Factory::MachinesT::const_iterator& out_machine_to_erase) {
+                                  Factory::MachinesT::const_iterator& out_machine_to_erase,
+                                  Factory::MachinesT::const_iterator& out_machine_to_edit) {
     for (auto machine_it = factory.machines.cbegin(); machine_it != factory.machines.cend();
          machine_it++) {
         const auto machine_uid = machine_it->first;
@@ -116,6 +117,10 @@ inline void draw_factory_machines(const Factory& factory,
             out_machine_to_erase = machine_it;
         }
         ImGui::Dummy(ImVec2{10, 0});
+        ImGui::SameLine();
+        if (ImGui::Button("Edit")) {
+            out_machine_to_edit = machine_it;
+        }
         ImGui::SameLine();
         ImGui::TextUnformatted(machine.name.c_str());
         ImGui::SameLine(ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x);

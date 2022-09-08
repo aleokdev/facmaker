@@ -22,8 +22,6 @@ public:
     void draw();
 
     struct MachineEditor {
-        MachineEditor(Machine machine, Uid machine_uid) :
-            machine(std::move(machine)), machine_uid(machine_uid) {}
         /// The machine being edited.
         Machine machine;
         /// The UID of the machine being edited.
