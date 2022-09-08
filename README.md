@@ -13,16 +13,18 @@ git clone --recursive https://github.com/aleokdev/facmaker
 cd facmaker
 ```
 
-Setting up CMake:
+Setting up the build directory:
 
 ```
-cmake .
+mkdir build
+cd build
+cmake -B. -S..
 ```
 
 Building the repo:
 
 ```
-cmake --build . --target facmaker
+cmake --build .
 ```
 
 Executing the program:
