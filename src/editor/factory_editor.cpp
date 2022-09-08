@@ -24,7 +24,9 @@ namespace fmk {
 
 FactoryEditor::FactoryEditor() :
     factory{.items = {}, .machines = {}}, uid_pool(Uid(Uid::INVALID_VALUE + 1)) {
-    node_editor_ctx = ed::CreateEditor();
+    ed::Config config;
+    config.SettingsFile = nullptr;
+    node_editor_ctx = ed::CreateEditor(&config);
     auto input_stream = std::ifstream("assets/starting_program.json");
     parse_factory_json(input_stream);
 
@@ -187,7 +189,7 @@ void FactoryEditor::update_processing_graph() {
             }
 
             if (ImGui::BeginPopup("Edit Item")) {
-                ImGui::InputText("Name", item_edit_name.data(), item_edit_name.capacity());
+                ImGui::InputText("Name", &item_edit_name);
                 ImGui::Combo("Type", reinterpret_cast<int*>(&item_edit_type),
                              "Input\0Output\0Internal");
                 ImGui::InputInt("Starting Quantity", &item_edit_starting_quantity);
@@ -283,7 +285,7 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
     } else {
         auto val = parser.release();
         if (const auto obj = val.if_object()) {
-            Uid next_uid(-1);
+            Uid next_uid(Uid::INVALID_VALUE);
             if (const auto uid_pool_val = obj->if_contains("uid_pool")) {
                 next_uid.value =
                     static_cast<int>(uid_pool_val->as_object().at("next_uid").as_int64());
@@ -310,10 +312,12 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
                             if (auto ty = item->at("type").if_string()) {
                                 if (*ty == "input") {
                                     parsed_items[item_uid].type = Item::NodeType::Input;
-                                    parsed_items[item_uid].attribute_uid = uid_pool.generate();
+                                    parsed_items[item_uid].attribute_uid =
+                                        parse_uid_pool.generate();
                                 } else if (*ty == "output") {
                                     parsed_items[item_uid].type = Item::NodeType::Output;
-                                    parsed_items[item_uid].attribute_uid = uid_pool.generate();
+                                    parsed_items[item_uid].attribute_uid =
+                                        parse_uid_pool.generate();
                                 } else if (*ty == "internal") {
                                     parsed_items[item_uid].type = Item::NodeType::Internal;
                                 }
@@ -470,15 +474,16 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
                 PLOG_WARNING << "JSON loading warning: \"simulate\" value not "
                                 "present, using the default value of 6000 ticks";
             }
+
+            if (!had_errors) {
+                factory = Factory{std::move(parsed_items), std::move(parsed_machines)};
+                uid_pool = parse_uid_pool;
+                cache.factory_cache = factory.generate_cache(ticks_to_simulate);
+            }
         } else {
             PLOG_ERROR << "JSON loading error: Program must start with a JSON object";
             had_errors = true;
         }
-    }
-
-    if (!had_errors) {
-        factory = Factory{std::move(parsed_items), std::move(parsed_machines)};
-        cache.factory_cache = factory.generate_cache(ticks_to_simulate);
     }
 }
 
@@ -567,7 +572,7 @@ void FactoryEditor::output_factory_json(std::ostream& out) const {
     // Simulate value
     { out << "\"simulate\":" << cache.factory_cache.ticks_simulated() << ","; }
 
-    { out << "\"uid_pool\":{\"next_uid\":" << uid_pool.get_next_uid().value << "}"; }
+    { out << "\"uid_pool\":{\"next_uid\":" << uid_pool.get_leading_value() << "}"; }
 
     out << "}";
 }

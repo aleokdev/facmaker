@@ -17,15 +17,15 @@ struct Uid {
 
 class UidPool {
 public:
-    explicit UidPool(Uid next_uid) : next_uid(next_uid) {}
+    explicit UidPool(Uid leading_value) : leading_value(leading_value.value) {}
 
     Uid generate();
 
-    [[nodiscard]] std::size_t available() const;
-    [[nodiscard]] Uid get_next_uid() const { return next_uid; }
+    [[nodiscard]] unsigned int get_leading_value() const { return leading_value; }
 
 private:
-    Uid next_uid{1};
+    std::vector<Uid> free_uids;
+    unsigned int leading_value{1};
 };
 
 } // namespace fmk

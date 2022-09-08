@@ -1,19 +1,22 @@
 #include "uid.hpp"
 #include <cstdint>
 #include <limits>
+#include <plog/Log.h>
 
 namespace fmk {
 
 Uid UidPool::generate() {
-    Uid to_return = next_uid;
-    next_uid.value++;
-    return to_return;
-}
-
-std::size_t UidPool::available() const {
-    return static_cast<std::size_t>(std::numeric_limits<int>::max()) * 2 -
-           (static_cast<std::int64_t>(next_uid.value) +
-            static_cast<std::int64_t>(std::numeric_limits<int>::max()));
+    if (free_uids.empty()) {
+        // Generate a new batch of free UIDs
+        constexpr std::size_t BATCH_SIZE = 25;
+        free_uids.reserve(BATCH_SIZE);
+        for (int i = BATCH_SIZE; i >= 0; i--) { free_uids.emplace_back(leading_value + i); }
+        leading_value += BATCH_SIZE;
+    }
+    auto value = free_uids.back();
+    free_uids.pop_back();
+    PLOGD << "Generated UID " << value.value;
+    return value;
 }
 
 } // namespace fmk
