@@ -1,53 +1,202 @@
 {
   "items": {
+    "-2147472464": {
+      "name": "Ammonium Chloride",
+      "type": "internal",
+      "start_with": 0
+    },
+    "-2147476814": {
+      "name": "Oxygen",
+      "type": "input",
+      "start_with": 0,
+      "x": 755.0,
+      "y": 224.0
+    },
+    "-2147469042": {
+      "name": "Nitric Acid",
+      "type": "internal",
+      "start_with": 0
+    },
+    "-2147476294": {
+      "name": "Water",
+      "type": "input",
+      "start_with": 0,
+      "x": 760.0,
+      "y": 287.0
+    },
+    "-2147456738": {
+      "name": "Platinum Dust",
+      "type": "internal",
+      "start_with": 0
+    },
+    "-2147466308": {
+      "name": "Reprecipitated Platinum Dust",
+      "type": "internal",
+      "start_with": 0
+    },
+    "-2147473848": {
+      "name": "Aqua Regia",
+      "type": "internal",
+      "start_with": 5000
+    },
+    "-2147462835": {
+      "name": "Nitrogen Dioxide",
+      "type": "internal",
+      "start_with": 0
+    },
+    "-2147457699": {
+      "name": "Calcium Chloride",
+      "type": "internal",
+      "start_with": 0
+    },
+    "-2147454267": {
+      "name": "Chlorine",
+      "type": "output",
+      "start_with": 0,
+      "x": 59.0,
+      "y": 501.0
+    },
+    "-2147455816": {
+      "name": "Calcium Dust",
+      "type": "internal",
+      "start_with": 0
+    },
+    "-2147450683": {
+      "name": "Tiny Pile of Platinum Residue",
+      "type": "output",
+      "start_with": 0,
+      "x": 547.0,
+      "y": 255.0
+    },
     "-1": {
       "name": "Crushed Iron Ore",
       "type": "internal",
       "start_with": 0
     },
-    "-4": {
-      "name": "Iron Ingot",
-      "type": "output",
-      "start_with": 0,
-      "x": 650.0,
-      "y": 350.0
+    "-2147461634": {
+      "name": "Diluted Sulfuric Acid",
+      "type": "internal",
+      "start_with": 0
     },
-    "-5": {
-      "name": "Iron Ore",
+    "-2147478222": {
+      "name": "Platinum Metallic Powder",
       "type": "input",
       "start_with": 0,
-      "x": 150.0,
-      "y": 350.0
+      "x": 3.0,
+      "y": 209.0
+    },
+    "-2147482601": {
+      "name": "Ammonia",
+      "type": "input",
+      "start_with": 0,
+      "x": 134.0,
+      "y": 41.0
+    },
+    "-2147479750": {
+      "name": "Hydrochloric Acid",
+      "type": "input",
+      "start_with": 0,
+      "x": 55.0,
+      "y": 114.0
+    },
+    "-2147471344": {
+      "name": "Platinum Concentrate",
+      "type": "internal",
+      "start_with": 0
+    },
+    "-2147452331": {
+      "name": "Palladium Enriched Ammonia",
+      "type": "output",
+      "start_with": 0,
+      "x": 897.0,
+      "y": 74.0
+    },
+    "-2147459233": {
+      "name": "Refined Platinum Salt Dust",
+      "type": "internal",
+      "start_with": 0
+    },
+    "-2147464192": {
+      "name": "Platinum Salt Dust",
+      "type": "internal",
+      "start_with": 0
     }
   },
   "machines": {
-    "2": {
-      "name": "Furnace",
+    "-2147414881": {
+      "name": "Mixer",
       "inputs": {
-        "-1": 1
+        "-2147469042": 1000,
+        "-2147461634": 1000
       },
       "outputs": {
-        "-4": 1
+        "-2147473848": 1000
       },
-      "time": 200,
-      "x": 450.0,
-      "y": 350.0
+      "time": 30,
+      "x": 1090.0,
+      "y": 129.0
     },
-    "1": {
-      "name": "Macerator",
+    "-2147454626": {
+      "name": "Large Chemical Reactor",
       "inputs": {
-        "-5": 1
+        "-2147462835": 2000,
+        "-2147476814": 1000,
+        "-2147476294": 1000
       },
       "outputs": {
-        "-1": 2
+        "-2147469042": 2000
       },
-      "time": 200,
-      "x": 250.0,
-      "y": 350.0
+      "time": 320,
+      "x": 883.0,
+      "y": 200.0
+    },
+    "-2147481463": {
+      "name": "Large Chemical Reactor",
+      "inputs": {
+        "-2147472464": 1800,
+        "-2147471344": 18000
+      },
+      "outputs": {
+        "-2147466308": 4,
+        "-2147464192": 16,
+        "-2147452331": 1800,
+        "-2147462835": 9000,
+        "-2147461634": 9000
+      },
+      "time": 1200,
+      "x": 541.0,
+      "y": 33.0
+    },
+    "-2147440863": {
+      "name": "Chemical reactor",
+      "inputs": {
+        "-2147482601": 1000,
+        "-2147479750": 1000
+      },
+      "outputs": {
+        "-2147472464": 1000
+      },
+      "time": 15,
+      "x": 245.0,
+      "y": 52.0
+    },
+    "-2147475817": {
+      "name": "Chemical reactor",
+      "inputs": {
+        "-2147478222": 1,
+        "-2147473848": 1000
+      },
+      "outputs": {
+        "-2147471344": 1000,
+        "-2147450683": 1
+      },
+      "time": 250,
+      "x": 224.0,
+      "y": 216.0
     }
   },
   "simulate": 1000,
   "uid_pool": {
-    "next_uid": -2147483258
+    "next_uid": -2147312080
   }
 }
