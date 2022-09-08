@@ -11,6 +11,7 @@ else ()
     message(STATUS "Using build type ${CMAKE_BUILD_TYPE}")
 endif ()
 
+
 add_executable(
         facmaker
         "src/main.cpp"
@@ -19,12 +20,16 @@ add_executable(
         "src/util/quantity_plot.cpp"
         "src/util/more_imgui.cpp"
         "src/uid.cpp")
-target_include_directories(facmaker PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/facmaker")
+target_include_directories(facmaker PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/facmaker" "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(facmaker PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 add_subdirectory(ext)
 
-target_link_libraries(facmaker PRIVATE ext)
+add_library(pfd STATIC "src/pfd.cpp")
+target_include_directories(pfd PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(pfd PRIVATE portable_file_dialogs)
+
+target_link_libraries(facmaker PRIVATE ext pfd)
 
 # Copy assets dir on build
 file(

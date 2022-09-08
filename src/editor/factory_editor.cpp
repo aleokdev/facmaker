@@ -15,6 +15,7 @@
 #include <string_view>
 
 #include "editor/draw_helpers.hpp"
+#include "pfd/pfd.hpp"
 
 namespace json = boost::json;
 
@@ -42,16 +43,29 @@ void FactoryEditor::update_processing_graph() {
     ImGui::Begin("Factory Display", nullptr, ImGuiWindowFlags_MenuBar);
 
     if (ImGui::BeginMenuBar()) {
-        if (ImGui::MenuItem("Import From Clipboard")) {
-            auto input = std::istringstream(ImGui::GetClipboardText());
-            parse_factory_json(input);
-            PLOGD << "Imported clipboard data";
-        }
-        if (ImGui::MenuItem("Export To Clipboard")) {
-            auto output = std::ostringstream();
-            output_factory_json(output);
-            ImGui::SetClipboardText(output.str().c_str());
-            PLOGD << "Exported to clipboard";
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Open...")) {
+                const auto selection = pfd::open_file("Open Factory").result();
+                if (!selection.empty()) {
+                    std::ifstream file(selection[0]);
+                    parse_factory_json(file);
+                    PLOGD << "Imported data from '" << selection[0] << "'";
+                }
+            }
+            if (ImGui::MenuItem("Save As...")) {
+                const auto destination = pfd::save_file("Save Factory").result();
+                if (!destination.empty()) {
+                    std::ofstream file(destination);
+                    output_factory_json(file);
+                    PLOGD << "Exported data to '" << destination << "'";
+                }
+            }
+            if (ImGui::MenuItem("Import From Clipboard")) {
+                auto input = std::istringstream(ImGui::GetClipboardText());
+                parse_factory_json(input);
+                PLOGD << "Imported clipboard data";
+            }
+            ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Debug")) {
             ImGui::MenuItem("Show ImGui Demo Window", nullptr, &show_imgui_demo_window);

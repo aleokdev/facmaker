@@ -22,3 +22,6 @@
 [submodule "ext/plog"]
 	path = ext/plog
 	url = https://github.com/SergiusTheBest/plog
+[submodule "ext/portable-file-dialogs"]
+	path = ext/portable-file-dialogs
+	url = https://github.com/samhocevar/portable-file-dialogs
