@@ -110,5 +110,9 @@ bool init_graphics(GLFWwindow** out_window) {
     // Setup ImGui style
     ImGui::StyleColorsDark();
 
+    // Setup ImGui font
+    ImGuiIO& io = ImGui::GetIO();
+    io.Fonts->AddFontFromFileTTF("assets/NotoSans-Medium.ttf", 72)->Scale = .3;
+
     return true;
 }
