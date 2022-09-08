@@ -229,9 +229,9 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
 
     auto parse_xy = [](json::object const& object, Uid uid) {
         if (auto x_val = object.if_contains("x")) {
-            imnodes::SetNodeEditorSpacePos(uid.value,
-                                           {static_cast<float>(x_val->as_double()),
-                                            static_cast<float>(object.at("y").as_double())});
+            imnodes::SetNodeGridSpacePos(uid.value,
+                                         {static_cast<float>(x_val->as_double()),
+                                          static_cast<float>(object.at("y").as_double())});
         }
     };
 
@@ -473,7 +473,7 @@ void FactoryEditor::output_factory_json(std::ostream& out) const {
             out << "\",\"start_with\":" << item.starting_quantity;
             if (write_xy) {
                 imnodes::EditorContextSet(imnodes_ctx);
-                const auto [x, y] = imnodes::GetNodeEditorSpacePos(item_uid.value);
+                const auto [x, y] = imnodes::GetNodeGridSpacePos(item_uid.value);
                 out << ",\"x\":" << std::fixed << std::setprecision(1) << x << ",\"y\":" << y
                     << "}";
             } else {
@@ -520,7 +520,7 @@ void FactoryEditor::output_factory_json(std::ostream& out) const {
                 }
                 out << "},";
                 out << "\"time\":" << machine.op_time.count() << ",";
-                const auto [x, y] = imnodes::GetNodeEditorSpacePos(machine_uid.value);
+                const auto [x, y] = imnodes::GetNodeGridSpacePos(machine_uid.value);
                 out << "\"x\":" << std::fixed << std::setprecision(1) << x << ",\"y\":" << y;
             }
             out << "}";
