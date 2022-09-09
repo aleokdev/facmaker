@@ -114,7 +114,8 @@ bool InputText(const char* label,
     cb_user_data.Str = str;
     cb_user_data.ChainCallback = callback;
     cb_user_data.ChainCallbackUserData = user_data;
-    return InputText(label, str->data(), str->capacity(), flags, InputTextCallback, &cb_user_data);
+    return InputText(label, str->data(), str->capacity() + 1, flags, InputTextCallback,
+                     &cb_user_data);
 }
 
 bool InputTextMultiline(const char* label,
@@ -130,8 +131,8 @@ bool InputTextMultiline(const char* label,
     cb_user_data.Str = str;
     cb_user_data.ChainCallback = callback;
     cb_user_data.ChainCallbackUserData = user_data;
-    return InputTextMultiline(label, str->data(), str->capacity(), size, flags, InputTextCallback,
-                              &cb_user_data);
+    return InputTextMultiline(label, str->data(), str->capacity() + 1, size, flags,
+                              InputTextCallback, &cb_user_data);
 }
 
 bool InputTextWithHint(const char* label,
@@ -147,8 +148,8 @@ bool InputTextWithHint(const char* label,
     cb_user_data.Str = str;
     cb_user_data.ChainCallback = callback;
     cb_user_data.ChainCallbackUserData = user_data;
-    return InputTextWithHint(label, hint, str->data(), str->capacity(), flags, InputTextCallback,
-                             &cb_user_data);
+    return InputTextWithHint(label, hint, str->data(), str->capacity() + 1, flags,
+                             InputTextCallback, &cb_user_data);
 }
 
 } // namespace ImGui
