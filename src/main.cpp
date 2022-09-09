@@ -71,18 +71,6 @@ bool init_graphics(GLFWwindow** out_window) {
 
     int window_x = 0, window_y = 0;
     const int window_w = 1020, window_h = 720;
-#ifndef NDEBUG
-    {
-        int monitor_count;
-        auto monitors = glfwGetMonitors(&monitor_count);
-        if (monitor_count > 1) {
-            int xpos, ypos, width, height;
-            glfwGetMonitorWorkarea(monitors[1], &xpos, &ypos, &width, &height);
-            window_x = xpos + width / 2 - window_w / 2;
-            window_y = ypos + height / 2 - window_h / 2;
-        }
-    }
-#endif
     *out_window = glfwCreateWindow(window_w, window_h, "facmaker", nullptr, nullptr);
     if (!*out_window) {
         return false;
