@@ -11,6 +11,15 @@ namespace fmk {
 
 namespace ed = ax::NodeEditor;
 
+ImColor color_from_uid(Uid uid) {
+    const auto hue = static_cast<float>((uid.value * 50) % 0xFF) / 255.f;
+    const auto sat = static_cast<float>((uid.value * 186) % 0xFF) / 255.f;
+    const auto val = 1.f;
+    float r, g, b;
+    ImGui::ColorConvertHSVtoRGB(hue, sat, val, r, g, b);
+    return {r, g, b, 1.};
+}
+
 inline void draw_item_graph(const Factory& factory,
                             const Factory::Cache& cache,
                             const Uid item_uid,
@@ -72,7 +81,8 @@ bool delete_button(Uid id) {
     return result;
 }
 
-void draw_pin() {
+/// The UID given is used for color.
+void draw_pin(Uid uid) {
     const auto line_height = ImGui::GetTextLineHeight();
     ImVec2 size{line_height, line_height};
 
@@ -89,8 +99,12 @@ void draw_pin() {
     drawList->PathLineTo(c + ImVec2(r, 0));
     drawList->PathLineTo(c + ImVec2(0, r));
     drawList->PathLineTo(c + ImVec2(-r, 0));
-    drawList->PathFillConvex(0xFFFFFFFF);
+    drawList->PathFillConvex(color_from_uid(uid).operator ImU32());
     ImGui::Dummy(size);
+}
+
+void draw_item_name(Uid uid, const Item& item) {
+    ImGui::TextColored(color_from_uid(uid), "%s", item.name.c_str());
 }
 
 /// Returns the input to delete, if any
@@ -99,12 +113,6 @@ inline std::optional<Uid> draw_factory_inputs(const Factory& factory, const Fact
 
     for (auto& input_uid : cache.inputs()) {
         const auto& item = factory.items.at(input_uid);
-        /*
-        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar,
-                                0xff + ((input_uid.value * 50) % 0xFF << 8) |
-                                    ((input_uid.value * 186) % 0xFF << 16) |
-                                    ((input_uid.value * 67) % 0xFF << 24));
-                                    */
         ed::BeginNode(input_uid.value);
 
         if (!cache.item_nodes().contains(input_uid) ||
@@ -117,9 +125,9 @@ inline std::optional<Uid> draw_factory_inputs(const Factory& factory, const Fact
         ImGui::TextUnformatted("Input");
 
         ed::BeginPin(item.attribute_uid.value, ed::PinKind::Output);
-        ImGui::Text("%s", item.name.c_str());
+        draw_item_name(input_uid, item);
         ImGui::SameLine();
-        draw_pin();
+        draw_pin(input_uid);
         ed::PinRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
         ed::EndPin();
 
@@ -138,11 +146,6 @@ inline void draw_factory_machines(const Factory& factory,
         const auto machine_uid = machine_it->first;
         const auto& machine = machine_it->second;
 
-        /*
-        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar,
-                                0xff + ((machine_uid.value * 50) % 0xFF << 8) |
-                                    ((machine_uid.value * 186) % 0xFF << 16) |
-                                    ((machine_uid.value * 67) % 0xFF << 24)); */
         ed::BeginNode(machine_uid.value);
 
         if (delete_button(machine_uid)) {
@@ -159,10 +162,12 @@ inline void draw_factory_machines(const Factory& factory,
             const auto& item = factory.items.at(input.item);
             ed::BeginPin(input.uid.value, ed::PinKind::Input);
             {
-                draw_pin();
+                draw_pin(input.item);
                 ed::PinRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
                 ImGui::SameLine();
-                ImGui::Text("%i %s", input.quantity, item.name.c_str());
+                ImGui::Text("%i", input.quantity);
+                ImGui::SameLine();
+                draw_item_name(input.item, item);
             }
             ed::EndPin();
         }
@@ -171,9 +176,11 @@ inline void draw_factory_machines(const Factory& factory,
             const auto& item = factory.items.at(output.item);
             ed::BeginPin(output.uid.value, ed::PinKind::Output);
             {
-                ImGui::Text("%i %s", output.quantity, item.name.c_str());
+                ImGui::Text("%i", output.quantity);
                 ImGui::SameLine();
-                draw_pin();
+                draw_item_name(output.item, item);
+                ImGui::SameLine();
+                draw_pin(output.item);
                 ed::PinRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
             }
             ed::EndPin();
@@ -192,11 +199,6 @@ inline std::optional<Uid> draw_factory_outputs(const Factory& factory,
 
     for (auto& output_uid : cache.outputs()) {
         const auto& item = factory.items.at(output_uid);
-        /*
-        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar,
-                                0xff + ((output_uid.value * 50) % 0xFF << 8) |
-                                    ((output_uid.value * 186) % 0xFF << 16) |
-                                    ((output_uid.value * 67) % 0xFF << 24)); */
         ed::BeginNode(output_uid.value);
 
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
@@ -212,10 +214,10 @@ inline std::optional<Uid> draw_factory_outputs(const Factory& factory,
         ImGui::PopStyleColor(2);
 
         ed::BeginPin(item.attribute_uid.value, ed::PinKind::Input);
-        draw_pin();
+        draw_pin(output_uid);
         ed::PinRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
         ImGui::SameLine();
-        ImGui::Text(item.name.c_str());
+        draw_item_name(output_uid, item);
         draw_item_graph(factory, cache, output_uid, false);
         ed::EndPin();
 
@@ -270,11 +272,6 @@ inline bool draw_machine_editor(const Factory& factory,
                                 FactoryEditor::MachineEditor& editor,
                                 UidPool& uid_pool,
                                 std::optional<ImVec2> node_pos = std::nullopt) {
-    /*
-        imnodes::PushColorStyle(imnodes::ColorStyle_TitleBar,
-                                0xff + ((editor.machine_uid.value * 50) % 0xFF << 8) |
-                                    ((editor.machine_uid.value * 186) % 0xFF << 16) |
-                                    ((editor.machine_uid.value * 67) % 0xFF << 24));*/
     ed::BeginNode(editor.machine_uid.value);
     if (node_pos.has_value())
         ed::SetNodePosition(editor.machine_uid.value, *node_pos);
