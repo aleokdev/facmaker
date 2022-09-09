@@ -87,6 +87,8 @@ void FactoryEditor::update_processing_graph() {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     if (ImGui::Begin("Node Editor")) {
+        ImGui::PopStyleVar(3);
+
         ed::SetCurrentEditor(node_editor_ctx);
         ed::Begin("Factory Node Editor");
         ImVec2 editor_pos = ImGui::GetCursorScreenPos();
@@ -126,28 +128,33 @@ void FactoryEditor::update_processing_graph() {
             new_machine = MachineEditor{machine, uid};
         }
 
+        ImVec2 open_popup_pos = ImGui::GetMousePos();
+        ed::Suspend();
+        if (ed::ShowBackgroundContextMenu()) {
+            ImGui::OpenPopup("Background Context Menu");
+        }
+
+        if (ImGui::BeginPopup("Background Context Menu")) {
+            if (ImGui::MenuItem("New Machine")) {
+                std::string new_machine_name = "Machine";
+                new_machine_name.reserve(32);
+                new_machine.emplace(
+                    MachineEditor{Machine{std::move(new_machine_name)}, uid_pool.generate()});
+
+                // We use open_popup_pos because it's in editor coordinates (Called
+                // ImGui::GetMousePos() before ed::Suspend())
+                ed::SetNodePosition(new_machine->machine_uid.value, open_popup_pos);
+            }
+            ImGui::EndPopup();
+        }
+        ed::Resume();
+
         ed::End();
         ed::SetCurrentEditor(nullptr);
         ImGui::End();
+    } else {
+        ImGui::PopStyleVar(3);
     }
-    ImGui::PopStyleVar(3);
-
-    /* TODO
-    if (ImGui::BeginPopupContextItem("_ngc")) {
-        if (ImGui::MenuItem("New Machine")) {
-            std::string new_machine_name = "Machine";
-            new_machine_name.reserve(32);
-            new_machine.emplace(
-                MachineEditor{Machine{std::move(new_machine_name)}, uid_pool.generate()});
-
-            editor_node_start_pos =
-                ImVec2{ImGui::GetMousePos().x - editor_pos.x -
-    imnodes::EditorContextGetPanning().x, ImGui::GetMousePos().y - editor_pos.y -
-    imnodes::EditorContextGetPanning().y};
-        }
-        ImGui::EndPopup();
-    }
-     */
 
     if (ImGui::Begin("Item List")) {
         static auto flags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable |
