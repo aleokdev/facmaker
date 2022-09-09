@@ -25,8 +25,8 @@ public:
     };
 
 private:
-    void update_processing_graph();
-    void update_item_statistics();
+    void draw_processing_graph();
+    void draw_item_statistics();
 
     void parse_factory_json(std::istream& input);
     void output_factory_json(std::ostream& output) const;
@@ -41,6 +41,7 @@ private:
     UidPool uid_pool;
     ax::NodeEditor::EditorContext* node_editor_ctx;
     std::optional<MachineEditor> new_machine;
+    std::size_t ticks_to_simulate_on_regenerate = 6000;
     bool show_imgui_demo_window = false;
     bool show_implot_demo_window = false;
 };

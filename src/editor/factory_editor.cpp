@@ -36,11 +36,11 @@ FactoryEditor::FactoryEditor() :
 FactoryEditor::~FactoryEditor() { ed::DestroyEditor(node_editor_ctx); }
 
 void FactoryEditor::draw() {
-    update_processing_graph();
-    update_item_statistics();
+    draw_processing_graph();
+    draw_item_statistics();
 }
 
-void FactoryEditor::update_processing_graph() {
+void FactoryEditor::draw_processing_graph() {
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
 
     if (ImGui::BeginMainMenuBar()) {
@@ -249,8 +249,16 @@ void FactoryEditor::update_processing_graph() {
     }
 }
 
-void FactoryEditor::update_item_statistics() {
+void FactoryEditor::draw_item_statistics() {
     ImGui::Begin("Item Statistics");
+    int tts = static_cast<int>(ticks_to_simulate_on_regenerate);
+    ImGui::SliderInt("Ticks To Simulate", &tts, 1000, 1000000);
+    if (tts != ticks_to_simulate_on_regenerate) {
+        ticks_to_simulate_on_regenerate = tts;
+        regenerate_cache();
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("(%.2fs)", static_cast<float>(ticks_to_simulate_on_regenerate) / 20.f);
     for (auto& [item_name, _] : factory.items) {
         draw_item_graph(factory, cache.factory_cache, item_name, true);
     }
@@ -258,13 +266,13 @@ void FactoryEditor::update_item_statistics() {
 }
 
 void FactoryEditor::regenerate_cache() {
-    cache.factory_cache = factory.generate_cache(cache.factory_cache.ticks_simulated());
+    cache.factory_cache = factory.generate_cache(ticks_to_simulate_on_regenerate);
 }
 
 void FactoryEditor::parse_factory_json(std::istream& input) {
     Factory::MachinesT parsed_machines;
     Factory::ItemsT parsed_items;
-    std::size_t ticks_to_simulate = 6000;
+    std::size_t ticks_to_simulate = ticks_to_simulate_on_regenerate;
     bool had_errors = false;
 
     // We set the editor context to be able to set positions
