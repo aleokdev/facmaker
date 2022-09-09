@@ -276,27 +276,20 @@ inline bool draw_machine_editor(const Factory& factory,
     if (node_pos.has_value())
         ed::SetNodePosition(editor.machine_uid.value, *node_pos);
 
-    ImGui::SelectableInput("##name", false, &editor.machine.name);
+    ImGui::SetNextItemWidth(200.);
+    ImGui::InputText("##name", &editor.machine.name);
+
+    static ItemStream* item_stream_being_edited{nullptr};
+    static bool should_open_popup{false};
 
     const auto& draw_io_manip = [&factory](ItemStream& obj) -> bool {
         ImGui::SetNextItemWidth(40);
         ImGui::DragInt("##quantity", &obj.quantity, 1.f, 1, 99999);
         ImGui::SameLine();
         ImGui::SetNextItemWidth(100);
-        if (ImGui::BeginCombo("##item", factory.items.at(obj.item).name.c_str())) {
-            for (auto& [item_uid, item] : factory.items) {
-                const bool is_selected = obj.item == item_uid;
-                if (ImGui::Selectable(item.name.c_str(), is_selected)) {
-                    obj.item = item_uid;
-                }
-
-                // Set the initial focus when opening the combo (scrolling +
-                // keyboard navigation focus)
-                if (is_selected) {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
-            ImGui::EndCombo();
+        if (ImGui::Button(factory.items.at(obj.item).name.c_str())) {
+            should_open_popup = true;
+            item_stream_being_edited = &obj;
         }
         ImGui::SameLine();
         return ImGui::SmallButton("-##rm_io");
@@ -351,6 +344,36 @@ inline bool draw_machine_editor(const Factory& factory,
     bool is_finished = ImGui::Button("Finish");
 
     ed::EndNode();
+
+    if (item_stream_being_edited) {
+        ed::Suspend();
+        if (should_open_popup) {
+            ImGui::OpenPopup("ioedit");
+            should_open_popup = false;
+        }
+        auto& item_stream = *item_stream_being_edited;
+        if (ImGui::BeginPopup("ioedit")) {
+            static ImGuiTextFilter filter;
+            if (ImGui::IsWindowAppearing()) {
+                ImGui::SetKeyboardFocusHere();
+            }
+            filter.Draw();
+            ImGui::BeginChild("ioedititems", ImVec2(0., 200.), true);
+            for (const auto& [item_uid, item] : factory.items) {
+                if (filter.PassFilter(item.name.c_str())) {
+                    if (ImGui::Selectable(item.name.c_str())) {
+                        item_stream.item = item_uid;
+                        item_stream_being_edited = nullptr;
+                        ImGui::CloseCurrentPopup();
+                        break;
+                    }
+                }
+            }
+            ImGui::EndChild();
+            ImGui::EndPopup();
+        }
+        ed::Resume();
+    }
 
     return is_finished;
 }
