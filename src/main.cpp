@@ -4,6 +4,9 @@
 
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
+#include <filesystem>
+#include <fmt/format.h>
+#include <fstream>
 #include <imgui.h>
 #include <imnodes.h>
 #include <implot.h>
@@ -11,6 +14,7 @@
 #include <plog/Formatters/TxtFormatter.h>
 #include <plog/Init.h>
 #include <plog/Log.h>
+#include <portable-file-dialogs.h>
 
 #include "editor/factory_editor.hpp"
 
@@ -29,6 +33,68 @@ int main() {
     }
 
     fmk::FactoryEditor editor;
+    std::string path_being_edited;
+
+    auto set_path_being_edited = [&path_being_edited, window](std::string&& str) {
+        path_being_edited = str;
+        if (str.empty()) {
+            glfwSetWindowTitle(window, "facmaker");
+        } else {
+            glfwSetWindowTitle(window,
+                               fmt::format("facmaker - {}",
+                                           std::filesystem::path(path_being_edited).filename().c_str())
+                                   .c_str());
+        }
+    };
+
+    auto draw_main_menu_bar = [&editor, &path_being_edited, &set_path_being_edited]() {
+        if (ImGui::BeginMainMenuBar()) {
+            if (ImGui::BeginMenu("File")) {
+                if (ImGui::MenuItem("New")) {
+                    editor = std::move(fmk::FactoryEditor());
+                }
+                if (ImGui::MenuItem("Open...")) {
+                    auto selection = pfd::open_file("Open Factory").result();
+                    if (!selection.empty()) {
+                        std::ifstream file(selection[0]);
+                        std::istringstream contents;
+                        contents << file;
+                        editor = std::move(contents);
+                        PLOGD << "Imported data from '" << selection[0] << "'";
+
+                        set_path_being_edited(std::move(selection[0]));
+                    }
+                }
+                if (ImGui::MenuItem("Save", nullptr, false, !path_being_edited.empty())) {
+                    std::ofstream file(path_being_edited);
+                    editor.output_factory_json(file);
+                    PLOGD << "Exported data to '" << path_being_edited << "'";
+                }
+                if (ImGui::MenuItem("Save As...")) {
+                    auto destination = pfd::save_file("Save Factory").result();
+                    if (!destination.empty()) {
+                        std::ofstream file(destination);
+                        editor.output_factory_json(file);
+                        PLOGD << "Exported data to '" << destination << "'";
+
+                        set_path_being_edited(std::move(destination));
+                    }
+                }
+                if (ImGui::MenuItem("Import From Clipboard")) {
+                    auto input = std::istringstream(ImGui::GetClipboardText());
+                    editor = std::move(fmk::FactoryEditor(parse_factory_json(input)));
+                    PLOGD << "Imported clipboard data";
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Debug")) {
+                ImGui::MenuItem("Show ImGui Demo Window", nullptr, &show_imgui_demo_window);
+                ImGui::MenuItem("Show ImPlot Demo Window", nullptr, &show_implot_demo_window);
+                ImGui::EndMenu();
+            }
+            ImGui::EndMainMenuBar();
+        }
+    }
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -37,6 +103,7 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        draw_main_menu_bar(window);
         editor.draw(window);
 
         ImGui::Render();

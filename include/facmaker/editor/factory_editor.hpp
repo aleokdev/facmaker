@@ -1,15 +1,18 @@
 #pragma once
 
-#include <imgui.h>
-#include <imgui_node_editor.h>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "factory.hpp"
 
 struct GLFWwindow;
+
+namespace ax::NodeEditor {
+struct EditorContext;
+}
 
 namespace fmk {
 
@@ -20,7 +23,7 @@ struct EditorContextDeleter {
 class FactoryEditor {
 public:
     FactoryEditor();
-    FactoryEditor(const std::string& path);
+    FactoryEditor(std::istringstream& to_parse);
 
     FactoryEditor& operator=(FactoryEditor&&) noexcept;
 
@@ -36,12 +39,15 @@ public:
         Uid machine_uid;
     };
 
+    void output_factory_json(std::ostream& output) const;
+
 private:
+    void draw_main_menu_bar(GLFWwindow* window);
     void draw_processing_graph(GLFWwindow* window);
     void draw_item_statistics();
+    void draw_item_list();
 
     void parse_factory_json(std::istream& input);
-    void output_factory_json(std::ostream& output) const;
 
     void regenerate_cache();
 

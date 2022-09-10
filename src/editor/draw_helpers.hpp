@@ -1,4 +1,5 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
+#include <algorithm>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <imgui_node_editor.h>
@@ -358,18 +359,19 @@ inline bool draw_machine_editor(const Factory& factory,
                 ImGui::SetKeyboardFocusHere();
             }
             filter.Draw();
-            ImGui::BeginChild("ioedititems", ImVec2(0., 200.), true);
-            for (const auto& [item_uid, item] : factory.items) {
-                if (filter.PassFilter(item.name.c_str())) {
-                    if (ImGui::Selectable(item.name.c_str())) {
-                        item_stream.item = item_uid;
-                        item_stream_being_edited = nullptr;
-                        ImGui::CloseCurrentPopup();
-                        break;
+            if (ImGui::BeginChild("ioedititems", ImVec2(0., 200.), true)) {
+                for (const auto& [item_uid, item] : factory.items) {
+                    if (filter.PassFilter(item.name.c_str())) {
+                        if (ImGui::Selectable(item.name.c_str())) {
+                            item_stream.item = item_uid;
+                            item_stream_being_edited = nullptr;
+                            ImGui::CloseCurrentPopup();
+                            break;
+                        }
                     }
                 }
+                ImGui::EndChild();
             }
-            ImGui::EndChild();
             ImGui::EndPopup();
         }
         ed::Resume();
