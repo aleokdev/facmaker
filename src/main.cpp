@@ -37,7 +37,7 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        editor.draw();
+        editor.draw(window);
 
         ImGui::Render();
         {

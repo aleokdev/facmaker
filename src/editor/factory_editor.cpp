@@ -63,12 +63,23 @@ FactoryEditor& FactoryEditor::operator=(FactoryEditor&& rhs) noexcept {
     return *this;
 }
 
-void FactoryEditor::draw() {
-    draw_processing_graph();
+void FactoryEditor::draw(GLFWwindow* window) {
+    draw_processing_graph(window);
     draw_item_statistics();
 }
+void FactoryEditor::set_path_being_edited(GLFWwindow* window, std::string&& str) {
+    path_being_edited = str;
+    if (str.empty()) {
+        glfwSetWindowTitle(window, "facmaker");
+    } else {
+        glfwSetWindowTitle(window,
+                           fmt::format("facmaker - {}",
+                                       std::filesystem::path(path_being_edited).filename().c_str())
+                               .c_str());
+    }
+}
 
-void FactoryEditor::draw_processing_graph() {
+void FactoryEditor::draw_processing_graph(GLFWwindow* window) {
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
 
     if (ImGui::BeginMainMenuBar()) {
@@ -77,19 +88,28 @@ void FactoryEditor::draw_processing_graph() {
                 *this = std::move(FactoryEditor());
             }
             if (ImGui::MenuItem("Open...")) {
-                const auto selection = pfd::open_file("Open Factory").result();
+                auto selection = pfd::open_file("Open Factory").result();
                 if (!selection.empty()) {
                     std::ifstream file(selection[0]);
                     parse_factory_json(file);
                     PLOGD << "Imported data from '" << selection[0] << "'";
+
+                    set_path_being_edited(window, std::move(selection[0]));
                 }
             }
+            if (ImGui::MenuItem("Save", nullptr, false, !path_being_edited.empty())) {
+                std::ofstream file(path_being_edited);
+                output_factory_json(file);
+                PLOGD << "Exported data to '" << path_being_edited << "'";
+            }
             if (ImGui::MenuItem("Save As...")) {
-                const auto destination = pfd::save_file("Save Factory").result();
+                auto destination = pfd::save_file("Save Factory").result();
                 if (!destination.empty()) {
                     std::ofstream file(destination);
                     output_factory_json(file);
                     PLOGD << "Exported data to '" << destination << "'";
+
+                    set_path_being_edited(window, std::move(destination));
                 }
             }
             if (ImGui::MenuItem("Import From Clipboard")) {

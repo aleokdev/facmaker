@@ -9,6 +9,8 @@
 
 #include "factory.hpp"
 
+struct GLFWwindow;
+
 namespace fmk {
 
 struct EditorContextDeleter {
@@ -25,7 +27,7 @@ public:
     FactoryEditor(const FactoryEditor&) = delete;
     FactoryEditor& operator=(const FactoryEditor&) = delete;
 
-    void draw();
+    void draw(GLFWwindow* window);
 
     struct MachineEditor {
         /// The machine being edited.
@@ -35,13 +37,15 @@ public:
     };
 
 private:
-    void draw_processing_graph();
+    void draw_processing_graph(GLFWwindow* window);
     void draw_item_statistics();
 
     void parse_factory_json(std::istream& input);
     void output_factory_json(std::ostream& output) const;
 
     void regenerate_cache();
+
+    void set_path_being_edited(GLFWwindow*, std::string&&);
 
     struct Cache {
         Factory::Cache factory_cache;
@@ -51,6 +55,7 @@ private:
     UidPool uid_pool;
     std::unique_ptr<ax::NodeEditor::EditorContext, EditorContextDeleter> node_editor_ctx;
     std::optional<MachineEditor> new_machine;
+    std::string path_being_edited;
     std::size_t ticks_to_simulate_on_regenerate = 6000;
     bool show_imgui_demo_window = false;
     bool show_implot_demo_window = false;
