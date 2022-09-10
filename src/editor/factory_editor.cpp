@@ -52,6 +52,7 @@ FactoryEditor::FactoryEditor(const std::string& path) : FactoryEditor() {
 FactoryEditor& FactoryEditor::operator=(FactoryEditor&& rhs) noexcept {
     // I hate non-destructive moves I hate non-destructive moves I hate non-destructive moves
     factory = std::move(rhs.factory);
+    cache = std::move(rhs.cache);
     uid_pool = std::move(rhs.uid_pool);
     node_editor_ctx = std::move(rhs.node_editor_ctx);
     new_machine = std::move(rhs.new_machine);
