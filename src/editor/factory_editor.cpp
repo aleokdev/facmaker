@@ -258,7 +258,7 @@ void FactoryEditor::draw_processing_graph(GLFWwindow* window) {
             if (ImGui::BeginPopup("Edit Item")) {
                 ImGui::InputText("Name", &item_edit_name);
                 ImGui::Combo("Type", reinterpret_cast<int*>(&item_edit_type),
-                             "Input\0Output\0Internal");
+                             "Input\0Output\0Internal\0");
                 ImGui::InputInt("Starting Quantity", &item_edit_starting_quantity);
                 if (ImGui::Button("Cancel")) {
                     item_being_edited = Uid(Uid::INVALID_VALUE);
