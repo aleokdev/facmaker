@@ -22,18 +22,45 @@ namespace ed = ax::NodeEditor;
 
 namespace fmk {
 
-FactoryEditor::FactoryEditor() :
-    factory{.items = {}, .machines = {}}, uid_pool(Uid(Uid::INVALID_VALUE + 1)) {
-    ed::Config config;
-    config.SettingsFile = nullptr;
-    node_editor_ctx = ed::CreateEditor(&config);
-    auto input_stream = std::ifstream("assets/starting_program.json");
-    parse_factory_json(input_stream);
-
-    ed::SetCurrentEditor(node_editor_ctx);
+void EditorContextDeleter::operator()(ax::NodeEditor::EditorContext* ptr) {
+    if (ed::GetCurrentEditor() == ptr) {
+        ed::SetCurrentEditor(nullptr);
+    }
+    ed::DestroyEditor(ptr);
 }
 
-FactoryEditor::~FactoryEditor() { ed::DestroyEditor(node_editor_ctx); }
+ed::EditorContext* create_editor() {
+    ed::Config config;
+    // al: This is technically UB, but also how we're supposed to block imgui-node-editor from
+    // saving to a file as far as I know
+    config.SettingsFile = nullptr;
+
+    return ed::CreateEditor(&config);
+}
+
+FactoryEditor::FactoryEditor() :
+    uid_pool(Uid(Uid::INVALID_VALUE + 1)), node_editor_ctx(create_editor()) {
+
+    ed::SetCurrentEditor(node_editor_ctx.get());
+}
+
+FactoryEditor::FactoryEditor(const std::string& path) : FactoryEditor() {
+    auto input_stream = std::ifstream(path);
+    parse_factory_json(input_stream);
+}
+
+FactoryEditor& FactoryEditor::operator=(FactoryEditor&& rhs) noexcept {
+    // I hate non-destructive moves I hate non-destructive moves I hate non-destructive moves
+    factory = std::move(rhs.factory);
+    uid_pool = std::move(rhs.uid_pool);
+    node_editor_ctx = std::move(rhs.node_editor_ctx);
+    new_machine = std::move(rhs.new_machine);
+    ticks_to_simulate_on_regenerate = rhs.ticks_to_simulate_on_regenerate;
+    show_imgui_demo_window = rhs.show_imgui_demo_window;
+    show_implot_demo_window = rhs.show_implot_demo_window;
+
+    return *this;
+}
 
 void FactoryEditor::draw() {
     draw_processing_graph();
@@ -45,6 +72,9 @@ void FactoryEditor::draw_processing_graph() {
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("New")) {
+                *this = std::move(FactoryEditor());
+            }
             if (ImGui::MenuItem("Open...")) {
                 const auto selection = pfd::open_file("Open Factory").result();
                 if (!selection.empty()) {
@@ -89,7 +119,7 @@ void FactoryEditor::draw_processing_graph() {
     if (ImGui::Begin("Node Editor")) {
         ImGui::PopStyleVar(3);
 
-        ed::SetCurrentEditor(node_editor_ctx);
+        ed::SetCurrentEditor(node_editor_ctx.get());
         ed::Begin("Factory Node Editor");
         ImVec2 editor_pos = ImGui::GetCursorScreenPos();
 
@@ -135,7 +165,8 @@ void FactoryEditor::draw_processing_graph() {
         }
 
         if (ImGui::BeginPopup("Background Context Menu")) {
-            if (ImGui::MenuItem("New Machine")) {
+            const auto can_add_machines = !factory.items.empty();
+            if (ImGui::MenuItem("New Machine", nullptr, false, can_add_machines)) {
                 std::string new_machine_name = "Machine";
                 new_machine_name.reserve(32);
                 new_machine.emplace(
@@ -144,6 +175,10 @@ void FactoryEditor::draw_processing_graph() {
                 // We use open_popup_pos because it's in editor coordinates (Called
                 // ImGui::GetMousePos() before ed::Suspend())
                 ed::SetNodePosition(new_machine->machine_uid.value, open_popup_pos);
+            }
+            if (!can_add_machines && ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Add at least one item via the Item List window before creating a machine");
             }
             ImGui::EndPopup();
         }
@@ -184,7 +219,7 @@ void FactoryEditor::draw_processing_graph() {
                     ImGui::OpenPopup("Edit Item");
                 }
                 ImGui::TableNextColumn();
-                ImGui::Text(item.name.data());
+                ImGui::Text("%s", item.name.data());
                 ImGui::TableNextColumn();
                 switch (item.type) {
                     case Item::NodeType::Input: ImGui::Text("Input"); break;
@@ -228,11 +263,8 @@ void FactoryEditor::draw_processing_graph() {
         ImGui::Combo("Type", &type, "Input\0Output\0Internal");
         ImGui::InputInt("Starting Quantity", &starting_quantity);
         if (ImGui::Button("Create new item")) {
-            factory.items[uid_pool.generate()] = Item{
-                static_cast<Item::NodeType>(type),
-                starting_quantity,
-                name,
-            };
+            factory.items[uid_pool.generate()] = Item{static_cast<Item::NodeType>(type),
+                                                      starting_quantity, name, uid_pool.generate()};
             regenerate_cache();
         }
 
@@ -276,7 +308,7 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
     bool had_errors = false;
 
     // We set the editor context to be able to set positions
-    ed::SetCurrentEditor(node_editor_ctx);
+    ed::SetCurrentEditor(node_editor_ctx.get());
 
     auto parse_xy = [](json::object const& object, Uid uid) {
         if (auto x_val = object.if_contains("x")) {
@@ -505,7 +537,7 @@ void FactoryEditor::parse_factory_json(std::istream& input) {
 void FactoryEditor::output_factory_json(std::ostream& out) const {
     out << "{";
 
-    ed::SetCurrentEditor(node_editor_ctx);
+    ed::SetCurrentEditor(node_editor_ctx.get());
     // Items
     {
         out << "\"items\":{";

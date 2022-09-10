@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 #include <imgui_node_editor.h>
+#include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -10,10 +11,19 @@
 
 namespace fmk {
 
+struct EditorContextDeleter {
+    void operator()(ax::NodeEditor::EditorContext*);
+};
+
 class FactoryEditor {
 public:
     FactoryEditor();
-    ~FactoryEditor();
+    FactoryEditor(const std::string& path);
+
+    FactoryEditor& operator=(FactoryEditor&&) noexcept;
+
+    FactoryEditor(const FactoryEditor&) = delete;
+    FactoryEditor& operator=(const FactoryEditor&) = delete;
 
     void draw();
 
@@ -39,7 +49,7 @@ private:
 
     Factory factory;
     UidPool uid_pool;
-    ax::NodeEditor::EditorContext* node_editor_ctx;
+    std::unique_ptr<ax::NodeEditor::EditorContext, EditorContextDeleter> node_editor_ctx;
     std::optional<MachineEditor> new_machine;
     std::size_t ticks_to_simulate_on_regenerate = 6000;
     bool show_imgui_demo_window = false;
