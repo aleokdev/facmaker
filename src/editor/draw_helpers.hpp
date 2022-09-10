@@ -53,17 +53,34 @@ inline void draw_item_graph(const Factory& factory,
                               ImPlotFlags_AntiAliased,
                           expanded ? 0 : ImPlotAxisFlags_NoDecorations,
                           (expanded ? 0 : ImPlotAxisFlags_NoLabel) | ImPlotAxisFlags_AutoFit)) {
-        auto plot_size = plot.container().size();
+        using QuantityPlotPtr = decltype(&plot);
+        const auto plot_limits = ImPlot::GetPlotLimits();
+        const auto points_to_render = static_cast<int>(std::ceil(plot_limits.X.Size()));
+        const auto render_offset = static_cast<int>(std::floor(plot_limits.X.Min));
+        ImPlot::PlotShadedG(
+            item.name.c_str(),
+            [](void* data, int idx) -> ImPlotPoint {
+                auto cache_data = static_cast<QuantityPlotPtr>(data);
 
-        // Shift the X axis one value to the left so that the total tick count equals the
-        // last value plotted
-        std::vector<int> plot_x(plot_size);
-        for (int i = 1; i <= plot_size; i++) { plot_x[i - 1] = i; }
+                const auto x_value = static_cast<double>(idx) + 1.;
+                const auto y_value = (idx > 0 && idx < cache_data->container().size())
+                                         ? static_cast<double>(cache_data->container().at(idx))
+                                         : 0.;
 
+                return ImPlotPoint{x_value, y_value};
+            },
+            const_cast<void*>(reinterpret_cast<const void*>(&plot)),
+            [](void* _, int idx) -> ImPlotPoint {
+                return ImPlotPoint{static_cast<double>(idx) + 1., 0.};
+            },
+            nullptr, points_to_render, render_offset);
+
+        /*
         ImPlot::PlotShaded(item.name.c_str(), plot_x.data(), plot.container().data(),
                            static_cast<int>(plot_size));
         ImPlot::PlotStairs(item.name.c_str(), plot_x.data(), plot.container().data(),
                            static_cast<int>(plot_size));
+                           */
 
         ImPlot::EndPlot();
     }
