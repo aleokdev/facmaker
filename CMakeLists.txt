@@ -7,11 +7,9 @@ set(CMAKE_CXX_STANDARD 20)
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     message(STATUS "Using debug mode")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG")
-    message(STATUS "Enabling UBSan as we're in a debug build")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined")
 else ()
     message(STATUS "Using build type ${CMAKE_BUILD_TYPE}")
-endif ()
+endif (CMAKE_BUILD_TYPE MATCHES Debug)
 
 
 add_executable(

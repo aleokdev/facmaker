@@ -16,16 +16,20 @@ cd facmaker
 Setting up the build directory:
 
 ```
-mkdir build
-cd build
-cmake -B. -S..
+cmake --list-presets
+# Replace {Preset} with any of the presets listed
+cmake --preset {Preset}
 ```
 
 Building the repo:
 
 ```
-cmake --build .
+cmake --build --list-presets
+# Replace {Preset} with any of the presets listed
+cmake --build --preset {Preset}
 ```
+
+If it doesn't work, check the CMake presets and try again.
 
 Executing the program:
 
