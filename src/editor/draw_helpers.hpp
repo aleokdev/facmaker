@@ -186,7 +186,7 @@ inline void draw_factory_machines(const Factory& factory,
             ed::EndPin();
         }
 
-        ImGui::TextDisabled("%li t/op", machine.op_time.count());
+        ImGui::TextDisabled("%i t/op", machine.op_time.count());
 
         ed::EndNode();
     }
