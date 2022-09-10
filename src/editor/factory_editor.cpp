@@ -2,6 +2,7 @@
 
 #include <boost/json.hpp>
 #include <charconv>
+#include <filesystem>
 #include <fmt/core.h>
 #include <fstream>
 #include <imgui.h>
@@ -13,6 +14,8 @@
 #include <plog/Log.h>
 #include <string>
 #include <string_view>
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
 
 #include "editor/draw_helpers.hpp"
 #include "pfd/pfd.hpp"
@@ -56,6 +59,7 @@ FactoryEditor& FactoryEditor::operator=(FactoryEditor&& rhs) noexcept {
     uid_pool = std::move(rhs.uid_pool);
     node_editor_ctx = std::move(rhs.node_editor_ctx);
     new_machine = std::move(rhs.new_machine);
+    path_being_edited = std::move(rhs.path_being_edited);
     ticks_to_simulate_on_regenerate = rhs.ticks_to_simulate_on_regenerate;
     show_imgui_demo_window = rhs.show_imgui_demo_window;
     show_implot_demo_window = rhs.show_implot_demo_window;
